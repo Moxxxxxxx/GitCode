@@ -1,0 +1,360 @@
+{% include "data/template-ui.html" %}
+<link rel="stylesheet" href='/static/zTree/css/zTreeStyle.css'>
+<style>
+    #std td {
+        font-size: 15px;
+        color: black !important;
+        text-align: left !important;
+        vertical-align: top;
+        width: 15px;
+        padding-top: 10px;
+    }
+
+    #desc {
+        white-space: pre-wrap;
+        color: black !important;
+        line-height: 30px;
+    }
+
+    #key {
+        width: 150px;
+        margin-left: 30px;
+        margin-top: -5px;
+        height: 30px;
+        font-size: 14px;
+    }
+</style>
+
+<!-- 正文主体 -->
+<div class="page-wrapper">
+    <div class="row page-titles">
+        <div class="col-md-6 align-self-center">
+            <h3 class="text-primary">数据标准</h3>
+        </div>
+
+        <div class="col-md-6 align-self-center">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="../../data/dashboard/">主页</a></li>
+                <li class="breadcrumb-item active">数据标准</li>
+            </ol>
+        </div>
+    </div>
+
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="row">
+                        <h5 style="color:black;font-weight:600;">目录</h5>
+                        <input type="text" id="key" value="" class="empty form-control" placeholder="搜索关键字"/>
+                    </div>
+
+                    <ul id="treeDemo" class="ztree"></ul>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card" onload="FristLoad();">
+                    <!-- 标准标题 -->
+                    <div class="row">
+                        <div class="col-md-10">
+                            <h3 style="color:black;font-weight:600;" id="std_title"></h3>
+                        </div>
+
+                        <div class="col-md-2 pull-right">
+							<a id="edit" href="" style="margin-right:5px;border-bottom: 1px dotted;color: #1779ba;">编辑标准</a>
+                        </div>
+                    </div>
+
+                    <!-- 标准概述 -->
+                    <span id="desc"></span>
+
+                    <!-- 标准明细 -->
+                    <table class="table-hover" id="std" style="display: none;table-layout: fixed;width: 100%;">
+                        <tr>
+                            <td style="width: 20%;">标准编号</h5></td>
+                            <td style="width: 80%;" id="std_id"></td>
+                        </tr>
+
+                        <tr>
+                            <td>标准中文名称</td>
+                            <td id="name"></td>
+                        </tr>
+
+                        <tr>
+                            <td>标准英文名称</td>
+                            <td id="en_name"></td>
+                        </tr>
+
+                        <tr>
+                            <td>业务定义</h5></td>
+                            <td id="business_definition"></td>
+                        </tr>
+
+                        <tr>
+                            <td>业务规则</td>
+                            <td id="business_rule"></td>
+                        </tr>
+
+                        <tr>
+                            <td>标准来源</td>
+                            <td id="std_source"></td>
+                        </tr>
+
+                        <tr>
+                            <td>数据类别</td>
+                            <td id="data_type"></td>
+                        </tr>
+
+                        <tr>
+                            <td>数据格式</td>
+                            <td id="data_format"></td>
+                        </tr>
+
+                        <tr>
+                            <td>代码编码规则</td>
+                            <td id="code_rule"></td>
+                        </tr>
+
+                        <tr>
+                            <td>取值范围</td>
+                            <td id="code_range"></td>
+                        </tr>
+
+                        <tr>
+                            <td>代码取值含义</h5></td>
+                            <td id="code_meaning"></td>
+                        </tr>
+
+                        <tr>
+                            <td>数据业务范围</td>
+                            <td id="business_range"></td>
+                        </tr>
+
+                        <tr>
+                            <td>数据责任部门</h5></td>
+                            <td id="dept"></td>
+                        </tr>
+
+                        <tr>
+                            <td>数据使用系统</td>
+                            <td id="system"></td>
+                        </tr>
+                    </table>
+
+                    <div class="row" style="margin-top: 30px;">
+                        <div class="col-md-8 text-right">
+                            <h5 class="update_info">最后编辑：<span id="update_user"></span></h5>
+                        </div>
+                        <div class="col-lg-4 text-left">
+                            <h5 class="update_info">编辑时间：<span id="update_time"></span></h5>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- footer -->
+<footer class="navbar-fixed-bottom" style="line-height: 10px;font-size:13px;">
+    <div class="footer">
+        © 2020 data quality
+    </div>
+</footer>
+</div>
+
+<!-- 设置头像 / 设置日期 -->
+<script src="/static/js/init.js"></script>
+
+<script src='/static/zTree/js/jquery.ztree.core.min.js'></script>
+<script src='/static/zTree/js/fuzzysearch.js'></script>
+<script src='/static/zTree/js/jquery.ztree.exhide.min.js'></script>
+
+<SCRIPT type="text/javascript">
+    var setting = {
+        data: {
+            key: {
+                title:"t"
+            },
+            simpleData: {
+                enable: true
+            }
+        },
+        callback: {
+            beforeClick: beforeClick,
+            onClick: onClick
+        },
+        async: {
+            enable: true,
+            url:"../../api/datastandard/query/index",
+            autoParam:["id", "pId", "name", "t", "open"],
+            type: "get",
+            //otherParam:{"otherParam":"zTreeAsyncTest"},
+            //dataFilter: filter
+        },
+
+    };
+
+    var log, className = "dark";
+    function beforeClick(treeId, treeNode, clickFlag) {
+        className = (className === "dark" ? "":"dark");
+        showLog("[ "+getTime()+" beforeClick ]&nbsp;&nbsp;" + treeNode.name );
+        return (treeNode.click != false);
+    }
+    function onClick(event, treeId, treeNode, clickFlag) {
+        //console.log(treeNode);
+        if (treeNode.level < 2){
+            $.ajax({
+                type : "GET",
+                async : false,
+                url : "../../api/datastandard/query/detail",
+                data: {
+                    std_name: treeNode.t,
+                    std_type: "desc"        //标准概述
+                },
+                dataType : "json",
+                success : function(result) {
+                    document.getElementById("std_title").innerText = treeNode.t;
+                    document.getElementById("std").style.display="none";
+                    document.getElementById("desc").style.display="";
+                    document.getElementById("desc").innerText = result.content;
+
+                    document.getElementById("edit").href = "../../datastandard/update?std_name=" + treeNode.t + "&std_type=desc";
+                },
+            })
+        }
+        else {
+            $.ajax({
+                type : "GET",
+                async : false,
+                url : "../../api/datastandard/query/detail",
+                data: {
+                    std_name: treeNode.t,
+                    std_type: "detail"      //标准名
+                },
+                dataType : "json",
+                success : function(result) {
+                    document.getElementById("std_title").innerText = treeNode.t;
+                    document.getElementById("std").style.display="";
+                    document.getElementById("desc").style.display="none";
+                    document.getElementById("std_id").innerText = result.std_id;
+                    document.getElementById("name").innerText = result.name;
+                    document.getElementById("en_name").innerText = result.en_name;
+                    document.getElementById("business_definition").innerText = result.business_definition;
+                    document.getElementById("business_rule").innerText = result.business_rule;
+                    document.getElementById("std_source").innerText = result.std_source;
+                    document.getElementById("data_type").innerText = result.data_type;
+                    document.getElementById("data_format").innerText = result.data_format;
+                    document.getElementById("code_rule").innerText = result.code_rule;
+                    document.getElementById("code_range").innerText = result.code_range;
+                    document.getElementById("code_meaning").innerText = result.code_meaning;
+                    document.getElementById("business_range").innerText = result.business_range;
+                    document.getElementById("dept").innerText = result.dept;
+                    document.getElementById("system").innerText = result.system;
+
+                    document.getElementById("edit").href = "../../datastandard/update?std_name=" + treeNode.t + "&std_type=detail";
+                },
+            })
+        }
+    }
+    function showLog(str) {
+        if (!log) log = $("#log");
+        log.append("<li class='"+className+"'>"+str+"</li>");
+        if(log.children("li").length > 8) {
+            log.get(0).removeChild(log.children("li")[0]);
+        }
+    }
+    function getTime() {
+        var now= new Date(),
+        h=now.getHours(),
+        m=now.getMinutes(),
+        s=now.getSeconds();
+        return (h+":"+m+":"+s);
+    }
+
+    $(document).ready(function(){
+        //$.fn.zTree.init($("#treeDemo"), setting, zNodes);   //初始化zTree
+        $.fn.zTree.init($("#treeDemo"), setting);
+        fuzzySearch('treeDemo','#key',null,null);           //初始化模糊搜索方法
+        
+        if (typeof(document.referrer.split('?')[1]) == "undefined"){
+            var init_name = '概述';
+            var std_type  = 'desc';
+        }
+        else {
+            var url_param = document.referrer.split('?')[1].split('=')[0];
+            if (url_param != 'std_name'){
+                var init_name = '概述';
+                var std_type  = 'desc';
+            }
+            else {
+                var init_name = decodeURI(document.referrer.split('?')[1].split('=')[1].split('&')[0]);
+                var std_type  = decodeURI(document.referrer.split('?')[1].split('&')[1].split('=')[1]);
+            }
+        }
+
+        document.getElementById("edit").href = "../../datastandard/update?std_name=" + init_name + "&std_type=" + std_type;
+
+        //初始化数据标准内容
+        $.ajax({
+            type : "GET",
+            async : false,
+            url : "../../api/datastandard/query/detail",
+            data: {
+                std_name: init_name,
+                std_type: std_type,
+            },
+            dataType : "json",
+            success : function(result) {
+                if (std_type == 'desc'){
+                    document.getElementById("std_title").innerText = init_name;
+                    document.getElementById("std").style.display="none";
+                    document.getElementById("desc").style.display="";
+                    document.getElementById("desc").innerText = result.content;
+                    document.getElementById("edit").href = "../../datastandard/update?std_name=" + init_name + "&std_type=desc";
+                }
+                else {
+                    document.getElementById("std_title").innerText = init_name;
+                    document.getElementById("std").style.display="";
+                    document.getElementById("desc").style.display="none";
+                    document.getElementById("std_id").innerText = result.std_id;
+                    document.getElementById("name").innerText = result.name;
+                    document.getElementById("en_name").innerText = result.en_name;
+                    document.getElementById("business_definition").innerText = result.business_definition;
+                    document.getElementById("business_rule").innerText = result.business_rule;
+                    document.getElementById("std_source").innerText = result.std_source;
+                    document.getElementById("data_type").innerText = result.data_type;
+                    document.getElementById("data_format").innerText = result.data_format;
+                    document.getElementById("code_rule").innerText = result.code_rule;
+                    document.getElementById("code_range").innerText = result.code_range;
+                    document.getElementById("code_meaning").innerText = result.code_meaning;
+                    document.getElementById("business_range").innerText = result.business_range;
+                    document.getElementById("dept").innerText = result.dept;
+                    document.getElementById("system").innerText = result.system;
+                    document.getElementById("edit").href = "../../datastandard/update?std_name=" + init_name + "&std_type=detail";
+                }
+            },
+        })
+
+        $.ajax({
+            type : "GET",
+            async : false,
+            url : "../../api/datastandard/query/history",
+            data: {
+                std_name: init_name,
+            },
+            dataType : "json",
+            success : function(result) {
+                document.getElementById("update_user").innerText = result.username;
+                document.getElementById("update_time").innerText = result.last_update_time;
+            }
+        })
+    });
+</SCRIPT>
+</body>
+
+</html>

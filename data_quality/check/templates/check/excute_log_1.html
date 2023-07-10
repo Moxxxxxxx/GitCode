@@ -1,0 +1,160 @@
+{% include "data/template-ui.html" %}
+
+<style>
+	td.details-control {
+		background: url("/static/img/details_open.png") no-repeat center center;
+		cursor: pointer;
+	}
+
+	tr.shown td.details-control {
+		background: url("/static/img/details_close.png") no-repeat center center;
+	}
+</style>
+
+<div class="page-wrapper">
+	<!-- 正文 -->
+	<div class="container-fluid animated fadeInUp">
+		<div class="col-12">
+			<div class="card">
+				<div class="card-title">
+					<div class="row" style="padding:0px !important;">
+						<div class="col-md-2">
+{#							<h4 class="text-primary">执行日志</h4>    #}
+                            <h4 class="text-primary">执行日志</h4> <a href="../../check/delete_excute_log"> #清空日志</a>
+						</div>
+					</div>
+				</div>
+
+				<div class="card-content">
+
+					<table id="excutetable" class="table table-bordered" cellspacing="0" width="100%">
+						<thead>
+							<tr>
+                                <th>ID</th>
+                                <th>产品线</th>
+                                <th>检查项目</th>
+                                <th>运行时间</th>
+                                <th>运行结果</th>
+                                <th>异常信息</th>
+							</tr>
+						</thead>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<footer class="navbar-fixed-bottom" style="line-height: 10px;font-size:13px;">
+		<div class="footer">
+			© 2021 data quality
+		</div>
+	</footer>
+
+	<!-- 设置头像 / 设置日期 -->
+	<script src="/static/js/init.js"></script>
+
+	<script type="text/javascript" src="/static/js/DataTables/DataTables-1.10.18/js/jquery.dataTables.js">
+	</script>
+	<script type="text/javascript" src="/static/js/DataTables/DataTables-1.10.18/js/dataTables.bootstrap.js">
+	</script>
+	<script type="text/javascript">
+
+
+        function fun_option() {
+            document.location.href = "../check/rule?productname={{ productname }}";
+        }
+
+		function fun_option(val) { //下拉框触发事件
+			document.location.href = "../check/rule?productname=" + val;
+		}
+
+
+
+		$(document).ready(function () {
+			var table = $('#excutetable').DataTable({
+				"ajax": {
+					"url": "../../api/check/rule?productname={{ productname }}",
+					"type": "GET",
+					"data": function (d) {
+						return $.extend({}, d, {
+							name: "{{ productname }}",
+						});
+					}
+				},
+				"columns": [{
+						"data": "id"
+					},
+					{
+						"data": "check_item"
+					},
+					{
+						"data": "problem_type"
+					},
+					{
+						"data": "db"
+					},
+					{
+						"className": 'details-control',
+						"orderable": false,
+						"data": null,
+						"defaultContent": ''
+					},
+                    {
+                        "data": "note"
+                    },
+				],
+
+
+				"pagingType": "full_numbers",
+				"sLoadingRecords": "正在加载数据...",
+				"sZeroRecords": "暂无数据",
+				stateSave: true,
+				"searching": true,
+				"ordering": true,
+				//"dom":'frtilp',
+				"dom": 'frt<"row"<"col-md-3"l><"col-md-3"i><"col-md-6 pull-right"p>>',
+
+				//汉化
+				"language": {
+					"processing": "玩命加载中...",
+					"lengthMenu": "显示 _MENU_ 项结果",
+					"zeroRecords": "没有匹配结果",
+					"info": "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+					"infoEmpty": "显示第 0 至 0 项结果，共 0 项",
+					"infoFiltered": "(由 _MAX_ 项结果过滤)",
+					"infoPostFix": "",
+					"url": "",
+					"paginate": {
+						"first": "首页",
+						"previous": "上一页",
+						"next": "下一页",
+						"last": "末页"
+					},
+					//"sSearch": "搜索:",
+				},
+			});
+			$('#excutetable tbody').on('click', 'td.details-control', function () {
+				var tr = $(this).closest('tr');
+				var row = table.row(tr);
+
+				if (row.child.isShown()) {
+					// This row is already open - close it
+					row.child.hide();
+					tr.removeClass('shown');
+				} else {
+					// Open this row
+					row.child(format(row.data())).show();
+					tr.addClass('shown');
+				}
+			});
+			//刷新页面按钮
+			$("#tb-refresh").on("click", function () {
+				location.reload();
+			});
+
+		});
+	</script>
+
+	</body>
+
+	</html>

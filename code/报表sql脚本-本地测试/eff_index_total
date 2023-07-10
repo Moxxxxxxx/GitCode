@@ -1,0 +1,16 @@
+-- 效率指标概览合计
+INSERT INTO eff_index(time,order_num,order_linenum,sku_num,station_slot_times,into_station_times,win_open_times,once_win_open_times,once_picking_quantity,once_station_slot_times,once_order_linenum)
+SELECT 
+    @time := '合计' AS 'time',
+    SUM(order_num) AS 'order_num',
+    SUM(order_linenum) AS 'order_linenum',
+    SUM(sku_num) AS 'sku_num',
+    SUM(station_slot_times) AS 'station_slot_times',
+    SUM(into_station_times) AS 'into_station_times',
+	SUM(win_open_times) AS 'win_open_times',
+    SUM(once_win_open_times) AS 'once_win_open_times',
+    SUM(once_picking_quantity) AS 'once_picking_quantity',
+    SUM(once_station_slot_times) AS 'once_station_slot_times',
+	SUM(once_order_linenum) AS 'once_order_linenum'
+FROM eff_index eix
+WHERE time != '平均值' 

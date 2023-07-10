@@ -1,0 +1,43 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+								"querySql":["select agv_code,project_code,agv_type_code,agv_type_name,start_fix_time,fix_duration,fix_reason
+											 from ads_single_project_agv_fix_deatail
+											 where project_code = 'A51118'"],
+                                "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads?mapreduce.job.queuename=hive"]
+                            }
+                        ]
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["amr_code","project_code","amr_type","amr_type_name","start_fix_time","fix_duration","fix_reason"], 
+						"preSql": ["truncate table ads_project_view_amr_fix_duration"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_amr_fix_duration"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

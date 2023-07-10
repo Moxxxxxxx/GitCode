@@ -1,0 +1,30 @@
+SELECT
+IF(tmp1.operator is NULL OR tmp1.operator ='','--',tmp1.operator) AS '工人ID',
+tmp1.display_name AS '工人姓名',
+tmp1.date1 AS '日期',
+tmp1.actual_quantity AS '盘点件数'
+FROM
+(
+SELECT DATE_FORMAT(d.last_updated_date,'%Y-%m-%d') AS date1,
+SUM(IF(d.actual_quantity = '-1',runtime_quantity,IFNULL(d.actual_quantity,0))) AS actual_quantity,
+d.operator AS operator,
+u.display_name
+FROM evo_wes_cyclecount.cycle_count_detail d
+LEFT JOIN auth.user u
+ON d.operator = u.username
+WHERE d.last_updated_date >= '{begin_time} 00:00:00' and d.last_updated_date <= '{end_time} 23:59:59'
+GROUP BY d.operator,DATE_FORMAT(d.last_updated_date,'%Y-%m-%d')
+
+UNION ALL
+
+SELECT CONCAT( DATE_FORMAT(d.last_updated_date,'%Y-%m-%d'),'-','汇总') AS date1,
+SUM(IF(d.actual_quantity = '-1',runtime_quantity,IFNULL(d.actual_quantity,0))) AS actual_quantity,
+'--',
+'--'
+FROM evo_wes_cyclecount.cycle_count_detail d
+LEFT JOIN auth.user u
+ON d.operator = u.username
+WHERE d.last_updated_date >= '{begin_time} 00:00:00' and d.last_updated_date <= '{end_time} 23:59:59'
+GROUP BY DATE_FORMAT(d.last_updated_date,'%Y-%m-%d')
+)tmp1
+ORDER BY DATE_FORMAT(tmp1.date1,'%Y-%m-%d')

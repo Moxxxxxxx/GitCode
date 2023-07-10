@@ -1,0 +1,271 @@
+{% include "data/template-ui.html" %}
+{#<link rel="stylesheet" type="text/css" href="/static/css/datatables/foundation.min.css" />#}
+{#<link rel="stylesheet" type="text/css" href="/static/css/datatables/dataTables.bootstrap4.min.css" />#}
+{#<link rel="stylesheet" type="text/css" href="/static/css/icons.css" />#}
+{#<link rel="stylesheet" type="text/css" href="/static/css/fonts.css" />#}
+{#<link rel="stylesheet" type="text/css" href="/static/css/rule_list.css" />#}
+
+<style>
+	td.details-control {
+		background: url("/static/img/details_open.png") no-repeat center center;
+		cursor: pointer;
+	}
+
+	tr.shown td.details-control {
+		background: url("/static/img/details_close.png") no-repeat center center;
+	}
+</style>
+
+<div class="page-wrapper">
+	<!-- 正文 -->
+	<div class="container-fluid animated fadeInUp">
+		<div class="col-12">
+			<div class="card">
+				<div class="card-title">
+					<div class="row" style="padding:0px !important;">
+						<div class="col-md-10">
+							<h4 class="text-primary">{{ productname }}产品线-检核规则库</h4>
+						</div>
+						<div class="col-md-2 pull-right">
+							<a href="../check/rule/edit?productname={{ productname }}&id=null"
+								class="btn btn-primary btn-xs p310"><i class="im-plus"></i> 添加规则</a>
+							<button id="tb-refresh" href="#" class="btn btn-primary btn-xs p1010"><i
+									class="im-spinner2 fa-spin" ></i> 刷新</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="card-content">
+                    <div class="col-lg-3 ">
+                        <select id="gameselect" style="height:2.2rem; font-size:13px; bottom:10px;margin:unset;"
+                                onchange="fun_option(this.value);"
+                                >
+                            <option value="">all</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" onclick="QueryGame();">查询产品线</button>
+                    </div>
+
+					<table id="example" class="table table-bordered" cellspacing="0" width="100%">
+						<thead>
+							<tr>
+								<th>ID</th>
+								<th>检查项</th>
+								<th>问题分类</th>
+								<th>目标系统数据库</th>
+								<th>检核逻辑</th>
+                                <th>备注</th>
+                                <th>状态</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<footer class="navbar-fixed-bottom" style="line-height: 10px;font-size:13px;">
+		<div class="footer">
+			© 2020 data quality
+		</div>
+	</footer>
+
+	<!-- 设置头像 / 设置日期 -->
+	<script src="/static/js/init.js"></script>
+
+	<script type="text/javascript" src="/static/js/DataTables/DataTables-1.10.18/js/jquery.dataTables.js">
+	</script>
+	<script type="text/javascript" src="/static/js/DataTables/DataTables-1.10.18/js/dataTables.bootstrap.js">
+	</script>
+	<script type="text/javascript">
+
+        function QueryGame(){
+            $.ajax({
+                type: "GET",
+                url: "../../api/check/query_game",
+                data: {},
+                success: function (result) {
+                    // 根据产品线名从接口数据获取对应的数据库名
+                    let games = [];
+                    for(let i in result.data.productname){
+                        games.push(result.data.productname[i]);
+                    }
+                    // 清除原有option
+                    $("#gameselect").empty();
+                    // 设置显示内容
+                    $("#gameselect").append($("<option value=''>all</option>"));
+                    for(i in games){
+                        $("#gameselect").append($("<option value='"+games[i]+"'>"+games[i]+"</option>"));
+                    }
+                    // 取消下拉框的禁用状态
+                    $('#gameselect').prop('disabled', false);
+                    // 刷新下拉框状态
+                    $("#gameselect").selectpicker("refresh");
+                }
+            })
+        }
+
+        function fun_option() {
+            document.location.href = "../check/rule?productname={{ productname }}";
+        }
+
+		function fun_option(val) { //下拉框触发事件
+			document.location.href = "../check/rule?productname=" + val;
+		}
+
+		function fun_status(id, status) { //下拉框触发事件
+			$.ajax({
+				type: "POST",
+				url: "../../api/check/rule/status_modify",
+				data: {
+					id: id,
+					status: status,
+					productname: "{{ productname }}",
+				},
+				success: function (data) {
+					console.log(data);
+					location.reload(true);
+				},
+				error: function (e) {
+					console.log(e);
+				}
+			})
+		}
+
+		function format(d) {
+			// `d` is the original data object for the row
+			return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
+				'<tr>' +
+				'<td>检核逻辑:</td>' +
+				'<td>' + d.check_sql + '</td>' +
+				'</tr>' +
+				'<tr>' +
+				'<td>备注:</td>' +
+				'<td>' + d.note + '</td>' +
+				'</tr>' +
+				'</table>';
+		}
+
+		$(document).ready(function () {
+			var table = $('#example').DataTable({
+				"ajax": {
+					"url": "../../api/check/rule?productname={{ productname }}",
+					"type": "GET",
+					"data": function (d) {
+						return $.extend({}, d, {
+							name: "{{ productname }}",
+						});
+					}
+				},
+				"columns": [{
+						"data": "id"
+					},
+					{
+						"data": "check_item"
+					},
+					{
+						"data": "problem_type"
+					},
+					{
+						"data": "db"
+					},
+					{
+						"className": 'details-control',
+						"orderable": false,
+						"data": null,
+						"defaultContent": ''
+					},
+                    {
+                        "data": "note"
+                    },
+				],
+
+				"columnDefs": [{
+						// 定义操作列,######以下是重点########
+						"targets": 7,
+						//操作按钮目标列
+						"data": null,
+						"render": function (data, type, row) {
+							var id = '"' + row.id + '"';
+							var html = "<a href='../check/rule/edit?id=" + row.id + "&productname=" + row
+								.productname + "&username=" + "{{ username }}" +
+								"' style='margin-right:5px;border-bottom: 1px dotted;'>编辑</a>"
+							return html;
+						}
+					},
+
+					{
+						"targets": 6,
+						"data": "status",
+						"render": function (data, type, row) {
+							var id = '"' + row.id + '"';
+							if (data == '1') {
+								var html = "<a href='javascript:void(0);' onclick='fun_status(" + row
+									.id + ",\"" + row.status +
+									"\")' style='color:#429e47;border-bottom: 1px dotted;'>已启用"  +
+									"</a>"
+								return html;
+							} else {
+								var html = "<a href='javascript:void(0);' onclick='fun_status(" + row
+									.id + ",\"" + row.status +
+									"\")' style='color:#e33734;border-bottom: 1px dotted;'>已停用" +
+									"</a>"
+								return html;
+							}
+						}
+					},
+				],
+
+				"pagingType": "full_numbers",
+				"sLoadingRecords": "正在加载数据...",
+				"sZeroRecords": "暂无数据",
+				stateSave: true,
+				"searching": true,
+				"ordering": true,
+				//"dom":'frtilp',
+				"dom": 'frt<"row"<"col-md-3"l><"col-md-3"i><"col-md-6 pull-right"p>>',
+
+				//汉化
+				"language": {
+					"processing": "玩命加载中...",
+					"lengthMenu": "显示 _MENU_ 项结果",
+					"zeroRecords": "没有匹配结果",
+					"info": "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+					"infoEmpty": "显示第 0 至 0 项结果，共 0 项",
+					"infoFiltered": "(由 _MAX_ 项结果过滤)",
+					"infoPostFix": "",
+					"url": "",
+					"paginate": {
+						"first": "首页",
+						"previous": "上一页",
+						"next": "下一页",
+						"last": "末页"
+					},
+					//"sSearch": "搜索:",
+				},
+			});
+			$('#example tbody').on('click', 'td.details-control', function () {
+				var tr = $(this).closest('tr');
+				var row = table.row(tr);
+
+				if (row.child.isShown()) {
+					// This row is already open - close it
+					row.child.hide();
+					tr.removeClass('shown');
+				} else {
+					// Open this row
+					row.child(format(row.data())).show();
+					tr.addClass('shown');
+				}
+			});
+			//刷新页面按钮
+			$("#tb-refresh").on("click", function () {
+				location.reload();
+			});
+
+		});
+	</script>
+
+	</body>
+
+	</html>

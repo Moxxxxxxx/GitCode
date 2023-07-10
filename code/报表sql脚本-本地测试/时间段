@@ -1,0 +1,64 @@
+SET @interval_time =60;
+SET @line_num =24;
+SET @begin_time = DATE_ADD(DATE_FORMAT(sysdate(),'%Y-%m-%d 07:00:00'),INTERVAL -1 DAY);
+SELECT 
+        CASE WHEN tmp1.ids=1 THEN '07:00'
+             WHEN tmp1.ids=2 THEN '08:00'
+             WHEN tmp1.ids=3 THEN '09:00'
+             WHEN tmp1.ids=4 THEN '10:00'
+             WHEN tmp1.ids=5 THEN '11:00'
+             WHEN tmp1.ids=6 THEN '12:00'
+             WHEN tmp1.ids=7 THEN '13:00'
+             WHEN tmp1.ids=8 THEN '14:00'
+             WHEN tmp1.ids=9 THEN '15:00'
+             WHEN tmp1.ids=10 THEN '16:00'
+             WHEN tmp1.ids=11 THEN '17:00'
+             WHEN tmp1.ids=12 THEN '18:00'
+             WHEN tmp1.ids=13 THEN '19:00'
+             WHEN tmp1.ids=14 THEN '20:00'
+             WHEN tmp1.ids=15 THEN '21:00'
+             WHEN tmp1.ids=16 THEN '22:00'
+             WHEN tmp1.ids=17 THEN '23:00'
+             WHEN tmp1.ids=18 THEN '00:00'
+             WHEN tmp1.ids=19 THEN '01:00'
+             WHEN tmp1.ids=20 THEN '02:00'
+             WHEN tmp1.ids=21 THEN '03:00'
+             WHEN tmp1.ids=22 THEN '04:00'
+             WHEN tmp1.ids=23 THEN '05:00'
+             WHEN tmp1.ids=24 THEN '06:00'
+             END as 'time', -- 时间段
+             tmp1.station_code as 'station_code', -- 工作站
+        cast(1-((SUM(		
+						CASE WHEN tmp1.begin_to_exit_time <= tmp1.begin_to_lineBegin_time and tmp1.begin_to_lineBegin_time <= tmp1.begin_to_lineEnd_time then tmp1.begin_to_lineBegin_time
+						     WHEN tmp1.begin_to_exit_time <= tmp1.begin_to_lineEnd_time and tmp1.begin_to_lineEnd_time <= tmp1.begin_to_lineBegin_time then tmp1.begin_to_lineEnd_time
+						     WHEN tmp1.begin_to_lineBegin_time <= tmp1.begin_to_exit_time and tmp1.begin_to_exit_time <= tmp1.begin_to_lineEnd_time then tmp1.begin_to_exit_time
+						     WHEN tmp1.begin_to_lineBegin_time <= tmp1.begin_to_lineEnd_time and tmp1.begin_to_lineEnd_time <= tmp1.begin_to_exit_time then tmp1.begin_to_lineEnd_time
+						     WHEN tmp1.begin_to_lineEnd_time <= tmp1.begin_to_exit_time and tmp1.begin_to_exit_time <= tmp1.begin_to_lineBegin_time then tmp1.begin_to_exit_time
+						     WHEN tmp1.begin_to_lineEnd_time <= tmp1.begin_to_lineBegin_time and tmp1.begin_to_lineBegin_time <= tmp1.begin_to_exit_time then tmp1.begin_to_lineBegin_time
+						ELSE 0 END
+						-
+						CASE WHEN tmp1.begin_to_entry_time <= tmp1.begin_to_lineBegin_time and tmp1.begin_to_lineBegin_time <= tmp1.begin_to_lineEnd_time then tmp1.begin_to_lineBegin_time
+						     WHEN tmp1.begin_to_entry_time <= tmp1.begin_to_lineEnd_time and tmp1.begin_to_lineEnd_time <= tmp1.begin_to_lineBegin_time then tmp1.begin_to_lineEnd_time
+						     WHEN tmp1.begin_to_lineBegin_time <= tmp1.begin_to_entry_time and tmp1.begin_to_entry_time <= tmp1.begin_to_lineEnd_time then tmp1.begin_to_entry_time
+						     WHEN tmp1.begin_to_lineBegin_time <= tmp1.begin_to_lineEnd_time and tmp1.begin_to_lineEnd_time <= tmp1.begin_to_entry_time then tmp1.begin_to_lineEnd_time
+						     WHEN tmp1.begin_to_lineEnd_time <= tmp1.begin_to_entry_time and tmp1.begin_to_entry_time <= tmp1.begin_to_lineBegin_time then tmp1.begin_to_entry_time
+						     WHEN tmp1.begin_to_lineEnd_time <= tmp1.begin_to_lineBegin_time and tmp1.begin_to_lineBegin_time <= tmp1.begin_to_entry_time then tmp1.begin_to_lineBegin_time
+						ELSE 0 END
+						) )/@interval_time/60)as decimal(10,2))as 'station_free_time' -- 工作站空闲率
+
+
+	FROM (
+	SELECT -- seq.id,
+				 tmp_line.ids,
+				 seq.station_code,
+                 TIMESTAMPDIFF(SECOND, @begin_time,if(seq.entry_time <= @begin_time,@begin_time,seq.entry_time)) 'begin_to_entry_time',
+				 TIMESTAMPDIFF(SECOND, @begin_time,if(seq.exit_time is null,DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE),if(seq.exit_time <= DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE),seq.exit_time,DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE)))) 'begin_to_exit_time',
+				 TIMESTAMPDIFF(SECOND, @begin_time,DATE_ADD(@begin_time,INTERVAL @interval_time*(tmp_line.ids-1) MINUTE)) 'begin_to_lineBegin_time',
+				 TIMESTAMPDIFF(SECOND, @begin_time,DATE_ADD(@begin_time,INTERVAL @interval_time*tmp_line.ids MINUTE)) 'begin_to_lineEnd_time'
+  FROM evo_station.evo_station_entry seq,
+	     (SELECT @ids:=@ids+1 ids FROM information_schema.COLUMNS,(select @ids:=0) tmp WHERE  @ids <@line_num) tmp_line
+ WHERE (seq.entry_time >= @begin_time and seq.entry_time <= DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE))
+    OR (seq.exit_time >= @begin_time and seq.exit_time <= DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE))
+		OR (seq.entry_time <= @begin_time and seq.exit_time >= DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE))
+) tmp1
+GROUP BY tmp1.ids,tmp1.station_code

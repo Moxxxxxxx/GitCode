@@ -1,0 +1,37 @@
+SELECT 
+
+tmp3.id AS '任务ID', 
+tmp3.task_type AS '任务类型编码',
+tmp3.state AS '任务状态', 
+tmp3.station_code AS '工作站编码',
+tmp3.work_id AS '作业单ID',
+tmp3.created_date AS '创建时间', 
+tmp3.last_updated_date AS '更新时间',
+tmp3.times AS '时间段', 
+@begin_time :='2021-01-01 02:00:00',
+@interval_time := 60,-- 默认设置为分钟，可修改日月天等单位
+@line_num := 6,
+
+
+CASE 
+WHEN tmp3.task_type LIKE '%_GUIDED' THEN '推荐上架任务' 
+WHEN tmp3.task_type LIKE '%_DIRECT' THEN '直接上架任务' 
+WHEN tmp3.task_type LIKE 'CYCLECOUNT_%' THEN '盘点任务' 
+WHEN tmp3.task_type LIKE 'PICKING_%' THEN '拣选任务' 
+WHEN tmp3.task_type LIKE 'STATION_%' THEN '工作站任务' 
+WHEN tmp3.task_type LIKE 'TALLY_%' THEN '理货任务' 
+WHEN tmp3.task_type LIKE '%_REPLENISH' THEN '补充任务' 
+WHEN tmp3.task_type LIKE 'ARRANGE_%' THEN '整理任务' 
+END AS '任务大类'
+
+FROM 
+(
+   SELECT 
+       tmp1.work_id, tmp1.last_updated_date,tmp1.id,tmp1.task_type,tmp1.state,tmp1.station_code,tmp1.created_date,
+       ceil(TIMESTAMPDIFF(SECOND, @begin_time,tmp1.last_updated_date)/@interval_time/60) times
+   FROM (
+       SELECT stk.work_id, stk.last_updated_date,stk.id,stk.task_type,stk.state,stk.station_code,stk.created_date
+        FROM  evo_station.station_task stk
+         WHERE stk.last_updated_date between @begin_time and DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE)
+		 ) tmp1
+  ) tmp3

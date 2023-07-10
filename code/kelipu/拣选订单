@@ -1,0 +1,279 @@
+-- 间隔X分钟统计
+-- 时间区间内，完成作业单数，完成订单行数，完成拣货件数
+SELECT
+@begin_time:='2021-07-06 00:00:00' AS 开始时间, -- 设置具体时间'2021-07-06 12:00:00'
+@interval_time :=60 AS 间隔时间, -- 间隔时间 单位：分钟
+tt.rn as '时间段', -- 默认24小时
+
+CASE WHEN tt.rn=1 THEN tmp3.time_1
+WHEN tt.rn=2 then tmp3.time_2
+WHEN tt.rn=3 then tmp3.time_3
+WHEN tt.rn=4 then tmp3.time_4
+WHEN tt.rn=5 then tmp3.time_5
+WHEN tt.rn=6 then tmp3.time_6
+WHEN tt.rn=7 then tmp3.time_7
+WHEN tt.rn=8 then tmp3.time_8
+WHEN tt.rn=9 then tmp3.time_9
+WHEN tt.rn=10 then tmp3.time_10
+WHEN tt.rn=11 then tmp3.time_11
+WHEN tt.rn=12 then tmp3.time_12
+WHEN tt.rn=13 then tmp3.time_13
+WHEN tt.rn=14 then tmp3.time_14
+WHEN tt.rn=15 then tmp3.time_15
+WHEN tt.rn=16 then tmp3.time_16
+WHEN tt.rn=17 then tmp3.time_17
+WHEN tt.rn=18 then tmp3.time_18
+WHEN tt.rn=19 then tmp3.time_19
+WHEN tt.rn=20 then tmp3.time_20
+WHEN tt.rn=21 then tmp3.time_21
+WHEN tt.rn=22 then tmp3.time_22
+WHEN tt.rn=23 then tmp3.time_23
+WHEN tt.rn=24 then tmp3.time_24
+end as '具体时间',
+
+CASE WHEN tt.rn=1 then tmp.order_1
+WHEN tt.rn=2 then tmp.order_2
+WHEN tt.rn=3 then tmp.order_3
+WHEN tt.rn=4 then tmp.order_4
+WHEN tt.rn=5 then tmp.order_5
+WHEN tt.rn=6 then tmp.order_6
+WHEN tt.rn=7 then tmp.order_7
+WHEN tt.rn=8 then tmp.order_8
+WHEN tt.rn=9 then tmp.order_9
+WHEN tt.rn=10 then tmp.order_10
+WHEN tt.rn=11 then tmp.order_11
+WHEN tt.rn=12 then tmp.order_12
+WHEN tt.rn=13 then tmp.order_13
+WHEN tt.rn=14 then tmp.order_14
+WHEN tt.rn=15 then tmp.order_15
+WHEN tt.rn=16 then tmp.order_16
+WHEN tt.rn=17 then tmp.order_17
+WHEN tt.rn=18 then tmp.order_18
+WHEN tt.rn=19 then tmp.order_19
+WHEN tt.rn=20 then tmp.order_20
+WHEN tt.rn=21 then tmp.order_21
+WHEN tt.rn=22 then tmp.order_22
+WHEN tt.rn=23 then tmp.order_23
+WHEN tt.rn=24 then tmp.order_24
+end as '完成作业单数',
+
+CASE WHEN tt.rn=1 then tmp2.detail_1
+WHEN tt.rn=2 then tmp2.detail_2
+WHEN tt.rn=3 then tmp2.detail_3
+WHEN tt.rn=4 then tmp2.detail_4
+WHEN tt.rn=5 then tmp2.detail_5
+WHEN tt.rn=6 then tmp2.detail_6
+WHEN tt.rn=7 then tmp2.detail_7
+WHEN tt.rn=8 then tmp2.detail_8
+WHEN tt.rn=9 then tmp2.detail_9
+WHEN tt.rn=10 then tmp2.detail_10
+WHEN tt.rn=11 then tmp2.detail_11
+WHEN tt.rn=12 then tmp2.detail_12
+WHEN tt.rn=13 then tmp2.detail_13
+WHEN tt.rn=14 then tmp2.detail_14
+WHEN tt.rn=15 then tmp2.detail_15
+WHEN tt.rn=16 then tmp2.detail_16
+WHEN tt.rn=17 then tmp2.detail_17
+WHEN tt.rn=18 then tmp2.detail_18
+WHEN tt.rn=19 then tmp2.detail_19
+WHEN tt.rn=20 then tmp2.detail_20
+WHEN tt.rn=21 then tmp2.detail_21
+WHEN tt.rn=22 then tmp2.detail_22
+WHEN tt.rn=23 then tmp2.detail_23
+WHEN tt.rn=24 then tmp2.detail_24
+end as '完成订单行数',
+
+CASE WHEN tt.rn=1 then tmp2.qty_1
+WHEN tt.rn=2 then tmp2.qty_2
+WHEN tt.rn=3 then tmp2.qty_3
+WHEN tt.rn=4 then tmp2.qty_4
+WHEN tt.rn=5 then tmp2.qty_5
+WHEN tt.rn=6 then tmp2.qty_6
+WHEN tt.rn=7 then tmp2.qty_7
+WHEN tt.rn=8 then tmp2.qty_8
+WHEN tt.rn=9 then tmp2.qty_9
+WHEN tt.rn=10 then tmp2.qty_10
+WHEN tt.rn=11 then tmp2.qty_11
+WHEN tt.rn=12 then tmp2.qty_12
+WHEN tt.rn=13 then tmp2.qty_13
+WHEN tt.rn=14 then tmp2.qty_14
+WHEN tt.rn=15 then tmp2.qty_15
+WHEN tt.rn=16 then tmp2.qty_16
+WHEN tt.rn=17 then tmp2.qty_17
+WHEN tt.rn=18 then tmp2.qty_18
+WHEN tt.rn=19 then tmp2.qty_19
+WHEN tt.rn=20 then tmp2.qty_20
+WHEN tt.rn=21 then tmp2.qty_21
+WHEN tt.rn=22 then tmp2.qty_22
+WHEN tt.rn=23 then tmp2.qty_23
+WHEN tt.rn=24 then tmp2.qty_24
+end as '完成拣货件数'
+
+FROM (
+-- 时间区间内，完成作业单数
+SELECT
+SUM(CASE WHEN t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) THEN 1 ELSE 0 END) as 'order_1',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) THEN 1 ELSE 0 END) as 'order_2',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) THEN 1 ELSE 0 END) as 'order_3',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) THEN 1 ELSE 0 END) as 'order_4',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) THEN 1 ELSE 0 END) as 'order_5',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) THEN 1 ELSE 0 END) as 'order_6',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*7 MINUTE) THEN 1 ELSE 0 END) as 'order_7',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*7 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*8 MINUTE) THEN 1 ELSE 0 END) as 'order_8',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*8 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*9 MINUTE) THEN 1 ELSE 0 END) as 'order_9',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*9 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*10 MINUTE) THEN 1 ELSE 0 END) as 'order_10',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*10 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*11 MINUTE) THEN 1 ELSE 0 END) as 'order_11',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*11 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*12 MINUTE) THEN 1 ELSE 0 END) as 'order_12',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*12 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*13 MINUTE) THEN 1 ELSE 0 END) as 'order_13',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*13 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*14 MINUTE) THEN 1 ELSE 0 END) as 'order_14',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*14 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*15 MINUTE) THEN 1 ELSE 0 END) as 'order_15',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*15 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*16 MINUTE) THEN 1 ELSE 0 END) as 'order_16',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*16 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*17 MINUTE) THEN 1 ELSE 0 END) as 'order_17',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*17 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*18 MINUTE) THEN 1 ELSE 0 END) as 'order_18',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*18 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*19 MINUTE) THEN 1 ELSE 0 END) as 'order_19',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*19 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*20 MINUTE) THEN 1 ELSE 0 END) as 'order_20',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*20 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*21 MINUTE) THEN 1 ELSE 0 END) as 'order_21',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*21 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*22 MINUTE) THEN 1 ELSE 0 END) as 'order_22',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*22 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*23 MINUTE) THEN 1 ELSE 0 END) as 'order_23',
+SUM(CASE WHEN t.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*23 MINUTE) AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*24 MINUTE) THEN 1 ELSE 0 END) as 'order_24'
+FROM evo_wcs_g2p.wcs_picking_work t
+WHERE t.state = 'DONE' AND t.updated_date > @begin_time AND t.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*24 MINUTE)
+) 
+tmp,
+
+(
+SELECT
+-- 时间区间内，完成订单行数
+SUM(CASE WHEN t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) THEN 1 ELSE 0 END) as 'detail_1',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) THEN 1 ELSE 0 END) as 'detail_2',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) THEN 1 ELSE 0 END) as 'detail_3',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) THEN 1 ELSE 0 END) as 'detail_4',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) THEN 1 ELSE 0 END) as 'detail_5',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) THEN 1 ELSE 0 END) as 'detail_6',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*7 MINUTE) THEN 1 ELSE 0 END) as 'detail_7',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*7 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*8 MINUTE) THEN 1 ELSE 0 END) as 'detail_8',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*8 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*9 MINUTE) THEN 1 ELSE 0 END) as 'detail_9',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*9 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*10 MINUTE) THEN 1 ELSE 0 END) as 'detail_10',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*10 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*11 MINUTE) THEN 1 ELSE 0 END) as 'detail_11',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*11 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*12 MINUTE) THEN 1 ELSE 0 END) as 'detail_12',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*12 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*13 MINUTE) THEN 1 ELSE 0 END) as 'detail_13',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*13 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*14 MINUTE) THEN 1 ELSE 0 END) as 'detail_14',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*14 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*15 MINUTE) THEN 1 ELSE 0 END) as 'detail_15',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*15 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*16 MINUTE) THEN 1 ELSE 0 END) as 'detail_16',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*16 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*17 MINUTE) THEN 1 ELSE 0 END) as 'detail_17',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*17 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*18 MINUTE) THEN 1 ELSE 0 END) as 'detail_18',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*18 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*19 MINUTE) THEN 1 ELSE 0 END) as 'detail_19',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*19 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*20 MINUTE) THEN 1 ELSE 0 END) as 'detail_20',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*20 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*21 MINUTE) THEN 1 ELSE 0 END) as 'detail_21',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*21 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*22 MINUTE) THEN 1 ELSE 0 END) as 'detail_22',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*22 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*23 MINUTE) THEN 1 ELSE 0 END) as 'detail_23',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*23 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*24 MINUTE) THEN 1 ELSE 0 END) as 'detail_24',
+
+-- 时间区间内，完成货品件数
+SUM(CASE WHEN t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) THEN t1.actual_quantity ELSE 0 END) as 'qty_1',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) THEN t1.actual_quantity ELSE 0 END) as 'qty_2',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) THEN t1.actual_quantity ELSE 0 END) as 'qty_3',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) THEN t1.actual_quantity ELSE 0 END) as 'qty_4',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) THEN t1.actual_quantity ELSE 0 END) as 'qty_5',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) THEN t1.actual_quantity ELSE 0 END) as 'qty_6',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*7 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_7',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*7 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*8 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_8',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*8 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*9 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_9',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*9 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*10 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_10',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*10 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*11 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_11',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*11 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*12 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_12',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*12 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*13 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_13',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*13 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*14 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_14',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*14 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*15 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_15',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*15 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*16 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_16',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*16 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*17 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_17',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*17 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*18 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_18',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*18 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*19 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_19',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*19 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*20 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_20',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*20 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*21 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_21',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*21 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*22 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_22',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*22 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*23 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_23',
+SUM(CASE WHEN t1.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*23 MINUTE) AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*24 MINUTE) THEN t1.actual_quantity  ELSE 0 END) as 'qty_24'
+
+ FROM evo_wcs_g2p.wcs_picking_job t1 WHERE t1.state = 'DONE' AND t1.updated_date > @begin_time AND t1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*24 MINUTE)
+) tmp2,
+
+(
+SELECT
+-- 时间区间内，具体时间段
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time MINUTE) as 'time_1',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*2 MINUTE) as 'time_2',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*3 MINUTE) as 'time_3',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*4 MINUTE) as 'time_4',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*5 MINUTE) as 'time_5',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*6 MINUTE) as 'time_6',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*7 MINUTE) as 'time_7',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*8 MINUTE) as 'time_8',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*9 MINUTE) as 'time_9',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*10 MINUTE) as 'time_10',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*11 MINUTE) as 'time_11',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*12 MINUTE) as 'time_12',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*13 MINUTE) as 'time_13',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*14 MINUTE) as 'time_14',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*15 MINUTE) as 'time_15',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*16 MINUTE) as 'time_16',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*17 MINUTE) as 'time_17',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*18 MINUTE) as 'time_18',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*19 MINUTE) as 'time_19',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*20 MINUTE) as 'time_20',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*21 MINUTE) as 'time_21',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*22 MINUTE) as 'time_22',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*23 MINUTE) as 'time_23',
+DATE_ADD(MIN(@begin_time),INTERVAL @interval_time*24 MINUTE) as 'time_24'
+)tmp3,
+
+(
+SELECT 1 rn
+UNION ALL 
+SELECT 2 rn
+UNION ALL 
+SELECT 3 rn
+UNION ALL 
+SELECT 4 rn
+UNION ALL 
+SELECT 5 rn
+UNION ALL 
+SELECT 6 rn
+UNION ALL 
+SELECT 7 rn
+UNION ALL 
+SELECT 8 rn
+UNION ALL 
+SELECT 9 rn
+UNION ALL 
+SELECT 10 rn
+UNION ALL 
+SELECT 11 rn
+UNION ALL 
+SELECT 12 rn
+UNION ALL 
+SELECT 13 rn
+UNION ALL 
+SELECT 14 rn
+UNION ALL 
+SELECT 15 rn
+UNION ALL 
+SELECT 16 rn
+UNION ALL 
+SELECT 17 rn
+UNION ALL 
+SELECT 18 rn
+UNION ALL 
+SELECT 19 rn
+UNION ALL 
+SELECT 20 rn
+UNION ALL 
+SELECT 21 rn
+UNION ALL 
+SELECT 22 rn
+UNION ALL 
+SELECT 23 rn
+UNION ALL 
+SELECT 24 rn
+)tt
+GROUP BY tt.rn;

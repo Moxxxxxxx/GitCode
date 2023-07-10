@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,Chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+
+    <title>数据质量管理平台</title>
+
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon.ico" />
+    <!-- Bootstraore CSS -->
+    <link rel="stylesheet" href="/static/css/lib/bootstrap/bootstrap.min.css" />
+    <!-- Custom CSS-->
+    <link rel="stylesheet" href="/static/css/helper.css" />
+    <link rel="stylesheet" href="/static/css/style.css" />
+
+    <!-- Jquery -->
+    <script src="/static/js/jquery/jquery.min.js"></script>
+    <!-- slimscrollbar scrollbar JavaScript -->
+    <script src="/static/js/jquery/jquery.slimscroll.js"></script>
+
+    <!-- Bootstrap tether Core JavaScript -->
+    <script src="/static/js/bootstrap/js/popper.min.js"></script>
+    <script src="/static/js/bootstrap/js/bootstrap.min.js"></script>
+    <!--Menu sidebar -->
+    <script src="/static/js/sidebarmenu.js"></script>
+    <!--stickey kit -->
+    <script src="/static/js/sticky-kit-master/dist/sticky-kit.min.js"></script>
+    <script src="/static/js/custom.min.js"></script>
+
+    <!-- Echarts js如果放在二级模板延迟加载,会出现始化空白 -->
+    <script src="https://cdn.bootcss.com/echarts/4.7.0/echarts.min.js"></script>
+</head>
+
+<style>
+    .nav-label {
+        clear: both;
+        display: block;
+        font-family: open sans;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 20px;
+        width: 100%;
+        padding-left: 15px;
+        color: #fff;
+    }
+    .nav-label-home {
+        color: #fff;
+        clear: both;
+        display: block;
+        font-family: open sans;
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 20px;
+        width: 100%;
+        padding-left: 15px;
+        padding-top: 10px;
+    }
+    hr {
+        border-color: hsla(0,0%,100%,.12);
+    }
+    .message-center {
+        height: auto !important;
+    }
+    .btn-circle {
+        padding: unset;
+        padding-top: 7px;
+    }
+    #avatar {
+        width: 40px;
+        color: #fff;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 16px;
+    }
+</style>
+
+<body class="fix-header fix-sidebar" onload="init();">
+    <!-- 加载图 spinners.css -->
+    <div class="preloader">
+        <svg class="circular" viewBox="25 25 50 50">
+            <circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="2" stroke-miterlimit="10" /> </svg>
+    </div>
+
+    <div id="main-wrapper">
+        <div class="header">
+            <nav class="navbar top-navbar navbar-expand-md navbar-light">
+                <!-- 左上角Logo -->
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="../../data/dashboard/">
+                        <span style="margin-left:-30px;color:#fff;">数据质量管理平台</span>
+                    </a>
+                </div>
+
+                <!-- 顶栏 -->
+                <div class="navbar-collapse" style="height:60px;">
+                    <ul class="navbar-nav mr-auto mt-md-0">
+                        <!-- 点击展开/隐藏侧边栏  -->
+                        <li class="nav-item"> <a class="nav-link nav-toggler hidden-md-up text-muted  "
+                                href="javascript:void(0)"><i class="mdi mdi-menu"></i></a> </li>
+                        <li class="nav-item m-l-10"> <a class="nav-link sidebartoggler hidden-sm-down text-muted  "
+                                href="javascript:void(0)"><i class="ti-menu"></i></a> </li>
+                    </ul>
+
+                    <ul class="navbar-nav my-lg-0">
+                        <!-- Begin 提示 -->
+{#                        <li class="nav-item dropdown">#}
+{#                            <a class="nav-link dropdown-toggle text-muted text-muted" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <i class="fa fa-bell"></i>#}
+{#								<div class="notify"> <span class="heartbit"></span> <span class="point"></span> </div>#}
+{#							</a>#}
+{#                            <div class="dropdown-menu dropdown-menu-right mailbox animated zoomIn">#}
+{#                                <ul>#}
+{#                                    <li>#}
+{#                                        <div class="drop-title">系统通知</div>#}
+{#                                    </li>#}
+{#                                    <li>#}
+{#                                        <div class="message-center">#}
+{#                                            <!-- Message -->#}
+{#                                            <a href="#">#}
+{#                                                <div class="btn btn-danger btn-circle m-r-10"><i class="fa fa-commenting"></i></div>#}
+{#                                                <div class="mail-contnet">#}
+{#                                                    <span class="mail-desc">检核内容主要针对数据的规范性，尚不对数据准确性进行检核</span> #}
+{#                                                </div>#}
+{#                                            </a>#}
+{#                                        </div>#}
+{#                                    </li>#}
+{#                                </ul>#}
+{#                            </div>#}
+{#                        </li>#}
+                        <!-- End 提示 -->
+
+                        <!-- Begin 用户 -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-muted  " href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <div id="avatar"></div>
+                            <div id="avatar"></div></a>
+                            <div class="dropdown-menu dropdown-menu-right animated zoomIn">
+                                <ul class="dropdown-user">
+                                    <li><a href="../../authorize/logout"><i class="fa fa-power-off"></i> 退出登录</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                        <!-- End 用户 -->
+                    </ul>
+                </div>
+            </nav>
+        </div>
+
+        <!-- 侧边栏 -->
+        <div class="left-sidebar">
+            <div class="scroll-sidebar">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li class="nav-label">质量管理</li>
+                        <li> <a class="has-arrow" href="#" aria-expanded="false">
+                            <i class="fa fa-table"></i>
+                            <span class="hide-menu">检核结果明细<span class="label label-rouded label-danger pull-right">1</span>
+                            </a>
+                            <ul aria-expanded="false" class="collapse">
+                                <li><a href="../../data/result_detail?productname=product1">产品线1 </a></li>
+                             {% comment %}   <li><a href="../../data/result_detail?productname=game2">产品线2</a></li>{% endcomment %}
+                            </ul>
+                        </li>
+                        <hr></hr>
+
+                        <!-- 标准管理 -->
+                        <li class="nav-label">标准管理</li>
+{#                        <li> <a class="has-arrow" href="../../datastandard/show" aria-expanded="false"><i class="fa fa-check-square-o"></i>#}
+{#                            <span class="hide-menu">数据标准</span>#}
+{#                            </a>#}
+{#                        </li>#}
+
+                        <li> <a class="has-arrow" href="#" aria-expanded="false">
+                            <i class="fa">
+                                <img src="/static/icons/db-icons/sql.svg" style="width: 27px;margin-left: -5px;" />
+                            </i>
+                            <span class="hide-menu">检核规则库<span class="label label-rouded label-warning pull-right">2</span>
+                            </a>
+                            <ul aria-expanded="false" class="collapse">
+                                <li><a href="../../check/rule?productname=product1">产品线1 </a></li>
+                                <li><a href="../../check/rule?productname=product2">产品线2 </a></li>
+                            </ul>
+                        </li>
+
+                        <!-- 后台管理 -->
+                        <li class="nav-label">后台管理</li>
+                        <li>
+                            <a class="has-arrow" href="../../backend/database" aria-expanded="false">
+                                <i class="fa fa-database" style="width: 27px;"></i>
+                                <span class="hide-menu">数据源</span>
+                            </a>
+                        </li>
+
+                        <li>
+                            <a class="has-arrow" href="#" aria-expanded="false">
+                                <i class="fa fa-tv"></i>
+                                <span class="hide-menu">任务调度<span class="label label-purple label-rouded pull-right">5</span>
+                            </a>
+                            <ul aria-expanded="false" class="collapse">
+                                <li><a href="../../backend/crontab"> 后台任务 </a></li>
+                                <li><a href="../../check/joblist"> 任务列表 </a></li>
+                                <li><a href="../../check/excute_log"> 执行日志 </a></li>
+                                <li><a href="../../check/abnormal_info"> 异常预警 </a></li>
+                                <li><a href="../../check/schedule_config"> Schedule配置 </a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a class="has-arrow" href="../../backend/server" aria-expanded="false">
+                                <i class="fa fa-tv"></i>
+                                <span class="hide-menu">后台服务器
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>

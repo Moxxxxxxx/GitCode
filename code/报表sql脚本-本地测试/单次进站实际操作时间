@@ -1,0 +1,11 @@
+SET @interval_time =60;
+SET @line_num =24;
+SET @begin_time = DATE_ADD(DATE_FORMAT(sysdate(),'%Y-%m-%d 07:00:00'),INTERVAL -6 DAY);
+
+SELECT station_code AS '工作站编码',
+       SUM(timestampdiff(SECOND,entry_time,exit_time)) AS '实际操作时间/秒',
+       count(station_code) AS '进站次数',
+       SUM(timestampdiff(SECOND,entry_time,exit_time))/count(station_code) AS '单次进站实际操作时间'
+FROM evo_station_entry
+WHERE entry_time >= @begin_time AND entry_time < DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE) AND idempotent_id LIKE '%G2PPicking%' 
+GROUP BY station_code

@@ -1,0 +1,112 @@
+{% include "data/template-ui.html" %}
+<link rel="stylesheet" type="text/css" href="/static/css/icons.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/fonts.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/sweetalert.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/switchery.min.css" />
+
+<style>
+    .container-fluid {
+        padding: 0 10 0;
+    }
+
+    .page-wrapper {
+        padding-bottom: 20px;
+    }
+
+    .page-wrapper {
+        min-height: 600px !important;
+    }
+
+    .table {
+        font-size: 13px;
+    }
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        line-height: unset;
+    }
+    tbody tr td {
+        text-align: left;
+    }
+    
+    h6 {
+        color: rgb(0,128,82);
+    }
+
+    .btn {
+        margin-top: -3px;
+        margin-left: 1px;
+        background-color: #4680ff;
+        color: aliceblue;
+    }
+    .btn:hover, .btn:focus {
+        color:aliceblue;
+    }
+    .fenge{
+        padding:12px 6px 0px 6px;
+        margin-left: 6px;
+        border-left: 1px solid #000;
+        font-size: 0;
+    }
+</style>
+
+<div class="page-wrapper">
+    <div class="container-fluid animated fadeInUp">
+        <div class="row">
+            <div class="card col-12">
+                <div class="card-title">
+                    <h4 class="text-primary">检核任务 - 执行日志</h4> <a href="../../check/delete_excute_log"> #清空日志</a>
+                </div>
+                <div class="card-content">
+                    <table class="table table-hover">
+                        <thead>
+                            <td>ID</td>
+                            <td>产品线</td>
+                            <td>检查项目</td>
+                            <td>运行时间</td>
+                            <td>运行结果</td>
+                            <td>异常信息</td>
+                        </thead>
+                        <tbody>
+                        {% for i in excute_logs %}
+                            <tr>
+                                <!-- ID -->
+                                <td>{{ i.0 }}</td>
+                                <!-- 产品线名 -->
+                                <td>{{ i.1 }}</td>
+
+                                <!-- 检查项 -->
+                                <td>{{ i.2 }}</td>
+
+                                <!-- 运行时间 -->
+                                <td>{{ i.3 }}</td>
+
+                                <!-- 运行结果 -->
+                                {% if i.4 == 'success' %}
+                                <td style="color: #4CAF50;"><i class="fa fa-check"></i>&nbsp;&nbsp;成功</td>
+                                {% else %}
+                                    <td style="color: #F44336;"><i class="fa fa-close"></i>&nbsp;&nbsp;失败</td>
+                                {% endif %}
+                                <!-- 异常信息 -->
+                                <td>{{ i.5 }}</td>
+
+
+                            </tr>
+                        {% endfor%}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="navbar-fixed-bottom" style="line-height: 10px;font-size:13px;">
+    <div class="footer">
+        © 2021 data quality
+    </div>
+</footer>
+
+
+
+</body>
+
+</html>

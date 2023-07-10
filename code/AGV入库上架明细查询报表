@@ -1,0 +1,19 @@
+SET @begin_time = '2021-07-17 00:00:00';
+SET @interval_time = 60;
+SET @line_num = 6;
+SELECT o.replenish_order_number AS '入库单号',
+       ofd.sku_id AS 'SKU',
+       COUNT(od.replenish_order_id) AS '订单数量',
+       ofd.bucket_slot_code AS '上架库位',
+       SUM(ofd.fulfill_quantity) AS '拣选数量',
+       DATE_FORMAT(o.created_date,'%Y-%m-%d') AS '上架日期',
+       DATE_FORMAT(o.created_date,'%H:%i:%s')AS '上架时间',
+       ofd.operator AS '上架操作员',
+       ofd.owner_code AS '货主编码'
+FROM wes_replenish_order o
+JOIN wes_replenish_order_detail od
+  ON od.replenish_order_id = o.id
+JOIN wes_replenish_order_fulfill_detail ofd
+  ON ofd.replenish_order_detail_id = od.id
+WHERE o.last_updated_date BETWEEN @begin_time AND DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE)
+GROUP BY o.replenish_order_number,ofd.sku_id,ofd.bucket_slot_code

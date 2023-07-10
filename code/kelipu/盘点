@@ -1,0 +1,126 @@
+-- 间隔X分钟统计
+-- 时间区间内，完成盘点作业单数，完成盘点任务行数
+SELECT
+@begin_time := '2021-07-06 12:00:00' AS 开始时间, -- 设置具体时间
+@interval_time :=60 AS 间隔时间, -- 间隔时间 单位：分钟
+tt.rn as '时间段', -- 目前只体现6小时
+
+CASE WHEN tt.rn=1 THEN tmp2.time_1
+WHEN tt.rn=2 then tmp2.time_2
+WHEN tt.rn=3 then tmp2.time_3
+WHEN tt.rn=4 then tmp2.time_4
+WHEN tt.rn=5 then tmp2.time_5
+WHEN tt.rn=6 then tmp2.time_6
+end as '具体时间',
+
+CASE WHEN tt.rn=1 THEN tmp3.job_1
+WHEN tt.rn=2 then tmp3.job_2
+WHEN tt.rn=3 then tmp3.job_3
+WHEN tt.rn=4 then tmp3.job_4
+WHEN tt.rn=5 then tmp3.job_5
+WHEN tt.rn=6 then tmp3.job_6
+end as '盘点作业总单数',
+
+CASE WHEN tt.rn=1 then tmp.order_1
+WHEN tt.rn=2 then tmp.order_2
+WHEN tt.rn=3 then tmp.order_3
+WHEN tt.rn=4 then tmp.order_4
+WHEN tt.rn=5 then tmp.order_5
+WHEN tt.rn=6 then tmp.order_6
+end as '已完成盘点作业单数',
+
+CASE WHEN tt.rn=1 THEN tmp4.task_1
+WHEN tt.rn=2 then tmp4.task_2
+WHEN tt.rn=3 then tmp4.task_3
+WHEN tt.rn=4 then tmp4.task_4
+WHEN tt.rn=5 then tmp4.task_5
+WHEN tt.rn=6 then tmp4.task_6
+end as '盘点任务总行数',
+
+CASE WHEN tt.rn=1 then tmp1.detail_1
+WHEN tt.rn=2 then tmp1.detail_2
+WHEN tt.rn=3 then tmp1.detail_3
+WHEN tt.rn=4 then tmp1.detail_4
+WHEN tt.rn=5 then tmp1.detail_5
+WHEN tt.rn=6 then tmp1.detail_6
+end as '已完成盘点任务行数'
+
+FROM 
+(
+-- 时间区间内，已完成盘点作业单数
+SELECT
+SUM(CASE WHEN cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) THEN 1 ELSE 0 END) as 'order_1',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) THEN 1 ELSE 0 END) as 'order_2',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) THEN 1 ELSE 0 END) as 'order_3',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) THEN 1 ELSE 0 END) as 'order_4',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) THEN 1 ELSE 0 END) as 'order_5',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) THEN 1 ELSE 0 END) as 'order_6'
+FROM evo_wes_cyclecount.cycle_count cc
+WHERE cc.state = 'DONE' AND cc.done_date > @begin_time AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE)
+)tmp,
+
+(
+-- 时间区间内，已完成盘点任务行数
+SELECT
+SUM(CASE WHEN cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) THEN 1 ELSE 0 END) as 'detail_1',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) THEN 1 ELSE 0 END) as 'detail_2',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) THEN 1 ELSE 0 END) as 'detail_3',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) THEN 1 ELSE 0 END) as 'detail_4',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) THEN 1 ELSE 0 END) as 'detail_5',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) THEN 1 ELSE 0 END) as 'detail_6'
+FROM evo_wcs_g2p.countcheck_job cj 
+WHERE cj.state = 'DONE' AND cj.updated_date > @begin_time AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE)
+) tmp1,
+
+(
+-- 时间区间内，具体时间段
+SELECT
+DATE_ADD(MIN(@begin_time),INTERVAL 60 MINUTE) as 'time_1',
+DATE_ADD(MIN(@begin_time),INTERVAL 60*2 MINUTE) as 'time_2',
+DATE_ADD(MIN(@begin_time),INTERVAL 60*3 MINUTE) as 'time_3',
+DATE_ADD(MIN(@begin_time),INTERVAL 60*4 MINUTE) as 'time_4',
+DATE_ADD(MIN(@begin_time),INTERVAL 60*5 MINUTE) as 'time_5',
+DATE_ADD(MIN(@begin_time),INTERVAL 60*6 MINUTE) as 'time_6'
+)tmp2,
+
+(
+-- 时间区间内，盘点作业总单数
+SELECT
+SUM(CASE WHEN cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) THEN 1 ELSE 0 END) as 'job_1',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) THEN 1 ELSE 0 END) as 'job_2',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) THEN 1 ELSE 0 END) as 'job_3',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) THEN 1 ELSE 0 END) as 'job_4',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) THEN 1 ELSE 0 END) as 'job_5',
+SUM(CASE WHEN cc.done_date > DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) THEN 1 ELSE 0 END) as 'job_6'
+FROM evo_wes_cyclecount.cycle_count cc
+WHERE cc.done_date > @begin_time AND cc.done_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE)
+)tmp3,
+
+(
+-- 时间区间内，盘点任务总行数
+SELECT
+SUM(CASE WHEN cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) THEN 1 ELSE 0 END) as 'task_1',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) THEN 1 ELSE 0 END) as 'task_2',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*2 MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) THEN 1 ELSE 0 END) as 'task_3',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*3 MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) THEN 1 ELSE 0 END) as 'task_4',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*4 MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) THEN 1 ELSE 0 END) as 'task_5',
+SUM(CASE WHEN cj.updated_date > DATE_ADD(@begin_time,INTERVAL @interval_time*5 MINUTE) AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE) THEN 1 ELSE 0 END) as 'task_6'
+FROM evo_wcs_g2p.countcheck_job cj 
+WHERE cj.updated_date > @begin_time AND cj.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*6 MINUTE)
+) tmp4,
+
+(
+SELECT 1 rn
+UNION ALL 
+SELECT 2 rn
+UNION ALL 
+SELECT 3 rn
+UNION ALL 
+SELECT 4 rn
+UNION ALL 
+SELECT 5 rn
+UNION ALL 
+SELECT 6 rn
+)tt
+
+GROUP BY tt.rn;

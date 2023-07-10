@@ -1,0 +1,153 @@
+-- 间隔X分钟统计
+SELECT 
+{{begin_time}} AS '开始时间(固定)',
+@interval_time := 60 AS '间隔时间(分)', -- 间隔时间 单位：分钟
+t2.rn as '时间段',
+
+CASE WHEN t2.rn=1 THEN tmp3.time_1
+WHEN t2.rn=2 then tmp3.time_2
+WHEN t2.rn=3 then tmp3.time_3
+WHEN t2.rn=4 then tmp3.time_4
+WHEN t2.rn=5 then tmp3.time_5
+WHEN t2.rn=6 then tmp3.time_6
+end as '具体时间（前一小时至）',
+
+CASE WHEN t2.rn=1 then tmp.free_time_1
+WHEN t2.rn=2 then tmp.free_time_2
+WHEN t2.rn=3 then tmp.free_time_3
+WHEN t2.rn=4 then tmp.free_time_4
+WHEN t2.rn=5 then tmp.free_time_5
+WHEN t2.rn=6 then tmp.free_time_6
+end as '空闲时间(秒）',
+
+CASE WHEN t2.rn=1 then tmp.free_rate_1
+WHEN t2.rn=2 then tmp.free_rate_2
+WHEN t2.rn=3 then tmp.free_rate_3
+WHEN t2.rn=4 then tmp.free_rate_4
+WHEN t2.rn=5 then tmp.free_rate_5
+WHEN t2.rn=6 then tmp.free_rate_6
+end as '空闲率'
+
+FROM (
+SELECT AVG(tt.free_time_1) free_time_1,AVG(tt.free_rate_1) free_rate_1,
+AVG(tt.free_time_2) free_time_2,AVG(tt.free_rate_2) free_rate_2,
+AVG(tt.free_time_3) free_time_3,AVG(tt.free_rate_3) free_rate_3,
+AVG(tt.free_time_4) free_time_4,AVG(tt.free_rate_4) free_rate_4,
+AVG(tt.free_time_5) free_time_5,AVG(tt.free_rate_5) free_rate_5,
+AVG(tt.free_time_6) free_time_6,AVG(tt.free_rate_6) free_rate_6
+FROM (
+select j.agv_id,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= {{begin_time}}  AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= {{begin_time}}  AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE)) 
+     WHEN j.gmt_create< {{begin_time}}  AND j.gmt_modified >= {{begin_time}}   AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,{{begin_time}} ,j.gmt_modified) 
+     WHEN j.gmt_create< {{begin_time}}  AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,{{begin_time}} ,DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE))
+     ELSE 0 END) free_time_1,
+
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= {{begin_time}}  AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= {{begin_time}}  AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE)) 
+     WHEN j.gmt_create< {{begin_time}}  AND j.gmt_modified >= {{begin_time}}   AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,{{begin_time}} ,j.gmt_modified) 
+     WHEN j.gmt_create< {{begin_time}}  AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,{{begin_time}} ,DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_1,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE))
+     ELSE 0 END) free_time_2,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_2,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE))
+     ELSE 0 END) free_time_3,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*2 MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_3,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE))
+     ELSE 0 END) free_time_4,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*3 MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_4,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE))
+     ELSE 0 END) free_time_5,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*4 MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_5,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE))
+     ELSE 0 END) free_time_6,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_create < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified >= DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) AND j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified > DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD({{begin_time}} ,INTERVAL @interval_time*5 MINUTE),DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_6
+
+from evo_rcs.basic_agv ba
+LEFT JOIN evo_rcs.rcs_agv_job j
+  ON ba.agv_code = j.agv_id
+where 
+(
+(
+j.gmt_create >={{begin_time}}  and j.gmt_create<DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE)
+)
+or
+(
+j.gmt_create<{{begin_time}}  and j.gmt_modified>{{begin_time}} 
+)
+or 
+(
+j.gmt_create<{{begin_time}}  and j.gmt_modified>={{begin_time}}  and j.gmt_modified < DATE_ADD({{begin_time}} ,INTERVAL @interval_time*6 MINUTE)
+)
+)
+GROUP BY j.agv_id
+) tt) tmp,
+(
+SELECT
+-- 时间区间内，具体时间段
+DATE_ADD(MIN({{begin_time}} ),INTERVAL 60 MINUTE) as 'time_1',
+DATE_ADD(MIN({{begin_time}} ),INTERVAL 60*2 MINUTE) as 'time_2',
+DATE_ADD(MIN({{begin_time}} ),INTERVAL 60*3 MINUTE) as 'time_3',
+DATE_ADD(MIN({{begin_time}} ),INTERVAL 60*4 MINUTE) as 'time_4',
+DATE_ADD(MIN({{begin_time}} ),INTERVAL 60*5 MINUTE) as 'time_5',
+DATE_ADD(MIN({{begin_time}} ),INTERVAL 60*6 MINUTE) as 'time_6'
+)tmp3,
+
+(
+SELECT 1 rn
+UNION ALL 
+SELECT 2 rn
+UNION ALL 
+SELECT 3 rn
+UNION ALL 
+SELECT 4 rn
+UNION ALL 
+SELECT 5 rn
+UNION ALL 
+SELECT 6 rn
+)t2
+GROUP BY t2.rn
+
+;

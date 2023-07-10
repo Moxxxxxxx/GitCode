@@ -1,0 +1,68 @@
+{% include "data/template-ui.html" %}
+{#<link rel="stylesheet" type="text/css" href="/static/css/datatables/foundation.min.css" />#}
+{#<link rel="stylesheet" type="text/css" href="/static/css/datatables/dataTables.bootstrap4.min.css" />#}
+{#<link rel="stylesheet" type="text/css" href="/static/css/icons.css" />#}
+{#<link rel="stylesheet" type="text/css" href="/static/css/fonts.css" />#}
+
+<div class="page-wrapper">
+	<!-- 正文 -->
+	<div class="container-fluid animated fadeInUp">
+		<div class="col-12">
+			<div class="card">
+
+				<div class="card-content">
+                    <div class="col-lg-3 ">定时器开关:
+                        <select id="switchselect" style="height:2.2rem; font-size:13px; bottom:10px;margin:unset;"
+                                onchange=fun_option(this.value);>
+                            <option value="-1"></option>
+                            <option value="1">on</option>
+                            <option value="0">off</option>
+                        </select>
+                    </div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<footer class="navbar-fixed-bottom" style="line-height: 10px;font-size:13px;">
+		<div class="footer">
+			© 2021 data quality
+		</div>
+	</footer>
+
+    <!-- 设置头像 / 设置日期 -->
+    <script src="/static/js/init.js"></script>
+
+    <script type="text/javascript" src="/static/js/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="/static/js/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/js/sweetalert.min.js"></script>
+    <script type="text/javascript">
+
+        function fun_option(val) { //下拉框触发事件
+            if(confirm("请确认是否改变定时器的状态?")){
+                $.ajax({
+                    type: "GET",
+                    url: "../check/schedule_switch?switch=" + val,
+                    success: function (data) {
+                        if (data.status == 'success') {
+                            swal({
+                                title: "执行成功",
+                                icon: "success",
+                            });
+                            location.reload();
+                        }
+                        else {
+                            swal('发生错误!', data.status, 'error');
+                        }
+                    },
+                    error: function (e) {
+                        swal('发生错误!', data.status, 'error');
+                    }
+                })
+            }
+        };
+    </script>
+
+	</body>
+
+	</html>

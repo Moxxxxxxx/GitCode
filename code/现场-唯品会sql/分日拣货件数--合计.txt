@@ -1,0 +1,5 @@
+SELECT DATE_FORMAT(d.last_updated_date,'%Y-%m-%d') AS '日期',
+SUM(d.quantity) AS '出库件数'
+FROM evo_wes_picking.picking_order_fulfill_detail d
+WHERE d.last_updated_date >= '{begin_time}00:00:00' and d.last_updated_date <= '{end_time}23:59:59' AND d.quantity IS NOT NULL
+GROUP BY DATE_FORMAT(d.last_updated_date,'%Y-%m-%d')

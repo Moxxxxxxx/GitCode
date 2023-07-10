@@ -1,0 +1,61 @@
+SET @begin_time = '2021-08-26 12:00:00'; -- 开始时间
+SET @line_num = 3; -- 默认3天的时间段
+SET @interval_time = 1440; -- 间隔时间 单位：分钟
+
+SELECT  tmp2.times as 'time', -- 时间段
+        tmp2.agv_code,
+        cast(SUM(tmp2.station_busy)/60/60/24 as decimal(10,2)) as 'station_used_rate' -- 工作站利用率
+FROM
+(
+SELECT 
+    tt1.ida times,
+    tt1.agv_code,
+     SUM(		
+			CASE WHEN tt1.begin_to_exit_time <= tt1.begin_to_lineBegin_time and tt1.begin_to_lineBegin_time <= tt1.begin_to_lineEnd_time then tt1.begin_to_lineBegin_time
+					 WHEN tt1.begin_to_exit_time <= tt1.begin_to_lineEnd_time and tt1.begin_to_lineEnd_time <= tt1.begin_to_lineBegin_time then tt1.begin_to_lineEnd_time
+					 WHEN tt1.begin_to_lineBegin_time <= tt1.begin_to_exit_time and tt1.begin_to_exit_time <= tt1.begin_to_lineEnd_time then tt1.begin_to_exit_time
+					 WHEN tt1.begin_to_lineBegin_time <= tt1.begin_to_lineEnd_time and tt1.begin_to_lineEnd_time <= tt1.begin_to_exit_time then tt1.begin_to_lineEnd_time
+					 WHEN tt1.begin_to_lineEnd_time <= tt1.begin_to_exit_time and tt1.begin_to_exit_time <= tt1.begin_to_lineBegin_time then tt1.begin_to_exit_time
+					 WHEN tt1.begin_to_lineEnd_time <= tt1.begin_to_lineBegin_time and tt1.begin_to_lineBegin_time <= tt1.begin_to_exit_time then tt1.begin_to_lineBegin_time
+				 	 ELSE 0 END
+					-
+			CASE WHEN tt1.begin_to_entry_time <= tt1.begin_to_lineBegin_time and tt1.begin_to_lineBegin_time <= tt1.begin_to_lineEnd_time then tt1.begin_to_lineBegin_time
+					 WHEN tt1.begin_to_entry_time <= tt1.begin_to_lineEnd_time and tt1.begin_to_lineEnd_time <= tt1.begin_to_lineBegin_time then tt1.begin_to_lineEnd_time
+					 WHEN tt1.begin_to_lineBegin_time <= tt1.begin_to_entry_time and tt1.begin_to_entry_time <= tt1.begin_to_lineEnd_time then tt1.begin_to_entry_time
+					 WHEN tt1.begin_to_lineBegin_time <= tt1.begin_to_lineEnd_time and tt1.begin_to_lineEnd_time <= tt1.begin_to_entry_time then tt1.begin_to_lineEnd_time
+					 WHEN tt1.begin_to_lineEnd_time <= tt1.begin_to_entry_time and tt1.begin_to_entry_time <= tt1.begin_to_lineBegin_time then tt1.begin_to_entry_time
+					 WHEN tt1.begin_to_lineEnd_time <= tt1.begin_to_lineBegin_time and tt1.begin_to_lineBegin_time <= tt1.begin_to_entry_time then tt1.begin_to_lineBegin_time
+				  ELSE 0 END
+			) station_busy
+FROM(
+	  SELECT 
+		tmp_line.ida,
+    tmp1.agv_code,
+    TIMESTAMPDIFF(SECOND, @begin_time,if(tmp1.updated_date <= @begin_time,@begin_time,tmp1.updated_date)) 'begin_to_entry_time',
+		TIMESTAMPDIFF(SECOND, @begin_time,if(tmp2.updated_date is null,DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE),if(tmp2.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE),tmp2.updated_date,DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE)))) 'begin_to_exit_time',
+		TIMESTAMPDIFF(SECOND, @begin_time,DATE_ADD(@begin_time,INTERVAL @interval_time*(tmp_line.ida-1) MINUTE)) 'begin_to_lineBegin_time',
+		TIMESTAMPDIFF(SECOND, @begin_time,DATE_ADD(@begin_time,INTERVAL @interval_time*tmp_line.ida MINUTE)) 'begin_to_lineEnd_time'
+    FROM 
+      (
+      SELECT c.agv_code,c.job_id,c.updated_date
+      FROM job_state_change c
+      WHERE c.state = 'GO_TARGET' AND job_type = 'G2P_ONLINE_PICK' AND c.updated_date >= @begin_time and c.updated_date < DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE)
+      GROUP BY c.job_id
+      )tmp1
+      RIGHT JOIN
+      (
+      SELECT c.agv_code,c.job_id,c.updated_date
+      FROM job_state_change c
+      WHERE c.state = 'DONE' AND job_type = 'G2P_ONLINE_PICK' AND c.updated_date >= @begin_time and c.updated_date < DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE)
+      GROUP BY c.job_id
+      )tmp2
+      ON tmp1.job_id =tmp2.job_id,
+	    (SELECT @ida:=@ida+1 ida FROM information_schema.COLUMNS,(select @ida:=0) tmp WHERE  @ida <@line_num) tmp_line
+WHERE 
+((tmp1.updated_date >= @begin_time and tmp1.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE))
+OR (tmp2.updated_date >= @begin_time and tmp2.updated_date <= DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE))
+OR (tmp1.updated_date <= @begin_time and tmp2.updated_date >= DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE)))
+) tt1
+GROUP BY tt1.ida,tt1.agv_code
+) tmp2 
+GROUP BY tmp2.times,tmp2.agv_code

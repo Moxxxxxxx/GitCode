@@ -1,0 +1,355 @@
+{% include "data/template-ui.html" %}
+<link rel="stylesheet" type="text/css" href="/static/css/icons.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/fonts.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/sweetalert.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/switchery.min.css" />
+
+<style>
+    .container-fluid {
+        padding: 0 10 0;
+    }
+
+    .page-wrapper {
+        padding-bottom: 20px;
+    }
+
+    .page-wrapper {
+        min-height: 600px !important;
+    }
+
+    .table {
+        font-size: 13px;
+    }
+    .table > tbody > tr > td, .table > tbody > tr > th, .table > tfoot > tr > td, .table > tfoot > tr > th, .table > thead > tr > td, .table > thead > tr > th {
+        line-height: unset;
+    }
+    tbody tr td {
+        text-align: left;
+    }
+    
+    h6 {
+        color: rgb(0,128,82);
+    }
+
+    .btn {
+        margin-top: -3px;
+        margin-left: 1px;
+        background-color: #4680ff;
+        color: aliceblue;
+    }
+    .btn:hover, .btn:focus {
+        color:aliceblue;
+    }
+    .fenge{
+        padding:12px 6px 0px 6px;
+        margin-left: 6px;
+        border-left: 1px solid #000;
+        font-size: 0;
+    }
+</style>
+
+<div class="page-wrapper">
+    <div class="container-fluid animated fadeInUp">
+        <div class="row">
+            <div class="card col-12">
+                <div class="col-md-3">
+                    <a href="../check/add" target="_blank" class="btn btn-primary"><i class="im-plus-circle"></i> 添加执行任务</a> <span class="fenge"></span><a   onclick="CheckAll()"  class="btn btn-primary"><i class="im-plus-circle"></i> 运行所有的检核任务</a>
+                </div>
+                <div class="card-content">
+                    <table class="table table-hover">
+                        <thead>
+                            <td>产品线</td>
+                            <td>数据库</td>
+                            <td>执行规则</td>
+                            <td>上次运行时间</td>
+                            <td>上次运行情况</td>
+                            <td>#  操作</td>
+                        </thead>
+                        <tbody>
+                        {% for i in jobs %}
+                            <tr>
+                                <!-- 产品线名 -->
+                                <td>{{ i.0 }}</td>
+
+                                <!-- 数据库名 -->
+                                <td>{{ i.1 }}</td>
+
+                                <!-- 执行规则 -->
+                                <td>{{ i.5 }}</td>
+
+
+                                <!-- 上次运行时间 -->
+                                <td>{{ i.2 }}</td>
+
+                                <!-- 上次运行状态 -->
+                                {% if i.6 == 'success' %}
+                                <td style="color: #4CAF50;"><i class="fa fa-check"></i>&nbsp;&nbsp;成功</td>
+                                {% elif i.6 == 'fail' %}
+                                <td style="color: #F44336;"><i class="fa fa-close"></i>&nbsp;&nbsp;失败</td>
+                                {% else %}
+                                    <td style="color: #F44336;"><i class="fa fa-close"></i>&nbsp;&nbsp;未执行</td>
+                                {% endif %}
+
+                                <!-- 操作 -->
+                                <td>
+                                    <button class="btn btn-xs btn-check" type="button" onclick="CheckNow(this)" c="{{ i.0 }}" productname="{{ i.0 }}"db="{{ i.1 }}" id="{{ i.4 }}">
+                                        <i class="im-paperplane"></i>&nbsp;&nbsp;立即检核>>
+                                    </button>
+
+                                    <span id="{{i.5}}_{{i.0}}_{{i.1}}" style="display: none;">
+                                        <i class="fa fa-spinner fa-pulse"></i>&nbsp;&nbsp;正在检核...
+                                    </span>
+                                  {% comment %}  <button style="display: none;" name="btn_progress" onclick="UpadteProgress(this)" productname="{{ i.0 }} "db="{{ i.2 }}">
+                                    </button>{% endcomment %}
+                                </td>
+                            </tr>
+                        {% endfor%}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{##}
+{#<footer class="navbar-fixed-bottom" style="line-height: 10px;font-size:13px;">#}
+{#    <div class="footer">#}
+{#        © 2021 data quality#}
+{#    </div>#}
+{#</footer>#}
+
+
+<!-- 设置头像 / 设置日期 -->
+<script src="/static/js/init.js"></script>
+
+<script src="/static/js/sweetalert.min.js"></script>
+<script src="/static/js/switchery.min.js"></script>
+
+<script>
+    var elems = Array.prototype.slice.call(document.querySelectorAll('.js-switch'));
+
+    elems.forEach(function(html) {
+        var switchery = new Switchery(html, { size: 'small' });
+
+        html.onchange = function(e) {
+            var obj = $(this);
+            var productname = obj.attr('productname');
+            var db = obj.attr('db');
+            var enable;
+
+            if (obj.is(':checked')) {
+                enable = true;
+            } else {
+                enable = false;
+            }
+
+            // 修改定时任务启用状态
+            $.ajax({
+                url: '../../api/check/crontab/status_modify',
+                type: 'POST',
+                data:{
+                    "enable": enable,
+                    "productname": productname,
+                    "db": db
+                },
+                success: function (data) {
+                    if (data.msg == 'success') {
+                        return true
+                    }
+                    else {
+                        swal({
+							title: "发生错误",
+                            icon: "error",
+                            buttons: false,
+							timer: 1000
+						});
+                    }
+                },
+                error: function (e) {
+                    swal({
+                        title: "发生错误",
+                        icon: "error",
+                        buttons: false,
+                        timer: 1000
+                    });
+                }
+            })
+          }
+    });
+
+
+    function notice(){
+        $.ajax({
+            type: "GET",
+            url: "../check/notice",
+            success: function (data) {
+                //console.log(data);
+                if (data.status == 'success') {
+                    swal({
+                        title: "通知成功",
+                        icon: "success",
+                    });
+                }
+                else {
+                    swal('发生错误!', data.status, 'error');
+                }
+            },
+            error: function (e) {
+                swal('发生错误!', data.status, 'error');
+            }
+        })
+    }
+
+
+    // 点击按钮手工调度检核任务
+    function CheckNow(obj){
+        var c = obj.attributes.c.value;
+        var productname = obj.attributes.productname.value;
+        var db = obj.attributes.db.value;
+        var id = obj.attributes.id.value;
+        swal({
+            title: c + "-" + db +"-开始执行检核",
+            icon: "success",
+            timer: 2000
+        });
+        obj.style.display = "none";
+        $.ajax({
+            type: "POST",
+            url: "../../api/check/rule/execute",
+            data: {
+                productname: productname,
+                db: db,
+                id: id,
+                username: localStorage.getItem("username"),
+            },
+            success: function (data) {
+                //console.log(data);
+                if (data.status == 'success') {
+                    obj.style.display = "block";
+                    document.getElementById(id + "_"+productname+"_"+db).style.display = "none";
+                    swal({
+                        title: c + "-" + db +"-检核成功",
+                        icon: "success",
+                    });
+                    location.reload();
+                }
+                else {
+                    swal('发生错误!', data.status, 'error');
+                    obj.style.display = "block";
+                    document.getElementById(id + "_"+productname+"_"+db).style.display = "none";
+                    location.reload();
+                }
+            },
+            error: function (e) {
+                swal('发生错误!', data.status, 'error');
+                obj.style.display = "block";
+                document.getElementById(id + "_"+productname+"_"+db).style.display = "none";
+                location.reload();
+            }
+        })
+    }
+
+    // 点击按钮手工调度所有检核任务
+    function CheckAll(){
+        swal({
+            title: "开始执行所有检核，请勿重复点击，系统将后台检查，请稍等片刻！！",
+            icon: "success",
+            timer: 2000
+        });
+        $.ajax({
+            type: "POST",
+            url: "../../api/check/rule/allexecute",
+            data: {
+                username: localStorage.getItem("username"),
+            },
+            success: function (data) {
+                if (data.status == 'success') {
+                    swal({
+                        title: "所有检核任务执行完毕",
+                        icon: "success",
+                    });
+                    location.reload();
+                }
+                else {
+                    swal('发生错误!', data.status, 'error');
+                    location.reload();
+                }
+            },
+            error: function (e) {
+                swal('发生错误!', data.status, 'error');
+                location.reload();
+            }
+        })
+    }
+
+    // 查询并填充任务进度条
+    function UpadteProgress(obj){
+        var bar = document.getElementsByClassName("progress-bar");
+        for(let i=0;i<bar.length;i++){
+            bar[i].style.width = '0%';
+        }
+        $.ajax({
+            type : "GET",
+            async : true,
+            url : "../../api/check/job_progress",
+            data: {},
+            dataType : "json",
+            success : function(result) {
+                for(var i in result){    // 按循环遍历
+                    var db =  result[i];
+                    if(Object.keys(db).length == 1){
+                        let value = Object.values(db)[0];
+                        let b = document.getElementById("progressbar_" + i + "_" + Object.keys(db)[0]);
+                        let v = document.getElementById("progressvalue_" + i + "_" + Object.keys(db)[0]);
+
+                        b.style.width = value + "%";
+                        v.innerHTML = value + "% 已完成";
+
+                        if(value <= 33){
+                            b.style.backgroundColor = '#F44336';  //红色
+                            v.style.color = '#F44336';
+                        }
+                        else if(value <= 66){
+                            b.style.backgroundColor = '#FFC107';  //黄色
+                            v.style.color = '#FFC107';
+                        }
+                        else{
+                            b.style.backgroundColor = '#4CAF50';  //绿色
+                            v.style.color = '#4CAF50';
+                        }
+                    }
+                    for(var j in db){
+                        //console.log(db[j]);
+                        let value = db[j];
+                        let b = document.getElementById("progressbar_" + i + "_" + j);
+                        let v = document.getElementById("progressvalue_" + i + "_" + j);
+                        b.style.width = value + "%";
+                        v.innerHTML = value + "% 已完成";
+
+                        if(value <= 33){
+                            b.style.backgroundColor = '#F44336';  //红色
+                            v.style.color = '#F44336';
+                        }
+                        else if(value <= 66){
+                            b.style.backgroundColor = '#FFC107';  //黄色
+                            v.style.color = '#FFC107';
+                        }
+                        else{
+                            b.style.backgroundColor = '#4CAF50';  //绿色
+                            v.style.color = '#4CAF50';
+                        }
+                    }
+                }
+            }
+        })
+    };
+
+
+    // 初始化进度条
+    //UpadteProgress();
+    var intervalID = setInterval(UpadteProgress, 1000*60);     // 每分钟刷新一次进度条
+</script>
+
+</body>
+
+</html>

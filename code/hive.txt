@@ -1,0 +1,197 @@
+[hadoop@003 wyy]$ hive -e "INSERT OVERWRITE LOCAL DIRECTORY '/home/hadoop/wyy/output' ROW FORMAT DELIMITED FIELDS TERMINATED by ',' SELECT * FROM table;"
+[hadoop@003 wyy]$ ls                                                            -- 查看历史
+output                                     
+[hadoop@003 wyy]$ cd output/                                                    -- 打开output文件夹
+[hadoop@003 output]$ ls                                                         -- 查看历史
+000000_0  000001_0  000002_0  000003_0  000004_0
+[hadoop@003 output]$ cat 00000* >> result.csv                                   -- 把00000*相关文件导入result.csv文件
+[hadoop@003 output]$ ls                                                         -- 查看历史
+000000_0  000001_0  000002_0  000003_0  000004_0  result.csv
+[hadoop@003 output]$ more result.csv                                            -- 查看result.csv文件详细数据
+[hadoop@003 output]$ wc -l result.csv                                           -- 查看result.csv文件数据量
+278770 result.csv
+[hadoop@003 output]$ sz result.csv                                              -- 导出result.csv文件
+rz
+
+[hadoop@003 output]$ pwd                                                        -- 展示路径
+
+[hadoop@003 output]$ vim test.sh                                                -- 编辑test.sh文件
+[hadoop@003 output]$ chmod 777 test.sh                                          -- 授予test.sh文件权限
+[hadoop@003 output]$ sh test.sh                                                 -- 执行test.sh文件
+[hadoop@003 output]$ rm test.sh                                                 -- 删除test.sh文件
+
+
+------------------------------------------------------ mysql 24小时循环 ------------------------------------------------------ 
+SELECT DATE_FORMAT(DATE_SUB(DATE_FORMAT(now(), '%Y-%m-%d 00:00:00'), INTERVAL (-(@u:=@u+1)) HOUR), '%Y-%m-%d %H:00:00') as ids
+FROM
+(SELECT a
+FROM(SELECT '1' AS a UNION SELECT '2'UNION SELECT '3'UNION SELECT '4') AS a
+JOIN(SELECT '1' UNION SELECT '2' UNION SELECT '3' UNION SELECT '4' UNION SELECT '5' UNION SELECT '6') AS b ON 1) AS b,
+(SELECT @u:=-1 ) AS i
+
+------------------------------------------------------- Hive 24小时循环 ------------------------------------------------------- 
+SELECT from_unixtime(unix_timestamp(DATE_FORMAT(DATE_ADD(CURRENT_DATE(), -1),'yyyy-MM-dd 00:00:00')) + (tmp.rn-1)*3600) as ids
+FROM
+(SELECT ROW_NUMBER() over(order by num) rn
+FROM(SELECT '1' AS num UNION SELECT '2'UNION SELECT '3'UNION SELECT '4') AS a
+JOIN(SELECT '1' UNION SELECT '2' UNION SELECT '3' UNION SELECT '4' UNION SELECT '5' UNION SELECT '6') AS b 
+) AS tmp
+
+---------------------------------------------------- 配置mapreduce计算引擎 ---------------------------------------------------- 
+set hive.execution.engine=mr;
+------------------------------------------------------ 配置spark计算引擎 ------------------------------------------------------ 
+set hive.execution.engine=spark;
+------------------------------------------------- 将MapReduce作业提交至hive队列 -------------------------------------------------
+set mapreduce.job.queuename=hive;
+
+------------------------------------------------- 截断小数 保留一位不进位 -------------------------------------------------
+select concat(split('12.369722222222222','\\.')[0],'\.',substr(split('12.369722222222222','\\.')[1],1,1))
+调度里需要加转移符号\
+
+
+
+------------------------------------------------- git 创建dev分支 -------------------------------------------------
+lenovo@DESKTOP-RVL4IBQ MINGW64 /d/data_quality (master)
+$ git checkout dev
+Switched to a new branch 'dev'
+M       log/err.log
+Branch 'dev' set up to track remote branch 'dev' from 'origin'.
+
+
+------------------------------------------------- 查看历史 -------------------------------------------------
+lenovo@DESKTOP-RVL4IBQ MINGW64 /d/data_quality (dev)
+$ ls
+Dockerfile    cicd/                         log/              runserver.sh*
+LICENSE       crontab                       logging.conf      runserverbygun.sh*
+Pipfile       data/                         manage.py*        schedule.conf
+Pipfile.lock  data_quality_supervisor.conf  monitor/          server.crt
+README.md     del_pyc.bat                   mysite/           server.key
+api/          demand/                       net/              sql/
+attment/      dev                           read.md           standard/
+authorize/    files/                        ream.md           static/
+backend/      gconfig.py                    requirements.txt  utils/
+check/        initData.py                   run.sh*           wsgi.py
+
+------------------------------------------------- 进入某文件夹 -------------------------------------------------
+lenovo@DESKTOP-RVL4IBQ MINGW64 /d/data_quality (dev)
+$ cd check/
+
+------------------------------------------------- 查看文件更多 -------------------------------------------------
+lenovo@DESKTOP-RVL4IBQ MINGW64 /d/data_quality/check (dev)
+$ more autocheck.py
+bash: more: command not found
+
+------------------------------------------------- 浏览文件 -------------------------------------------------
+lenovo@DESKTOP-RVL4IBQ MINGW64 /d/data_quality/check (dev)
+$ cat autocheck.py
+
+------------------------------------------------- 查找包含关系 -------------------------------------------------
+role_id   4,11,19,26,84,88   ->  find_in_set('88',role_id)  or  ARRAY_CONTAINS(split(role_id,','),'88')
+
+
+------------------------------------------------- 行转列：笛卡尔乘积 -------------------------------------------------
+SELECT pcc.project_code_class,
+             pa.project_area
+FROM 
+(
+  SELECT split('A',',') a,
+               split('华北,总部,华南,海外,华东,西南,华中,未知',',') b
+) tmp
+lateral view explode(a) pcc as project_code_class 
+lateral view explode(b) pa as project_area
+
+
+SELECT explode(split('发货阶段(硬件项目),已结项(硬件项目),发货阶段,上线阶段,验收阶段,结项阶段,已结项',',')) as project_progress_stage
+
+------------------------------------------------- 行转列：一对一 -------------------------------------------------
+SELECT p.apply_user_name, -- 申请人
+       p.reimburse_user_name, -- 报销人
+       p.reimburse_categories, -- 报销类型
+       tmp.project_codes,
+       tmp.reimburse_amounts,
+       p.reimburse_date
+FROM ${dwd_dbname}.dwd_bpm_personal_expense_account_info_ful p
+LATERAL VIEW posexplode(split(row_project_codes,',')) tmp as single_id_index,project_codes
+LATERAL VIEW posexplode(split(row_reimburse_amounts,',')) tmp1 as single_id_index,reimburse_amounts
+where tmp.single_id_index = tmp1.single_id_index
+
+
+------------------------------------------------- 创建临时独立表 -------------------------------------------------
+create table table_name as
+select
+
+from
+....
+
+
+------------------------------------------------- 创建视图表 -------------------------------------------------
+create or replace view  view_name  as
+select ......
+
+
+------------------------------------------------- 1.回滚 -------------------------------------------------
+lenovo@DESKTOP-RVL4IBQ MINGW64 /d/data_quality (dev)
+$ git stash
+Saved working directory and index state WIP on dev: e55df29 rm hive
+
+------------------------------------------------- 2.git 拉取分支 ：dev -------------------------------------------------
+lenovo@DESKTOP-RVL4IBQ MINGW64 /d/data_quality (dev)
+$ git pull origin dev
+From ssh://172.31.234.12:10022/bigdata/data_quality
+ * branch            dev        -> FETCH_HEAD
+Already up to date.
+
+------------------------------------------------- 3.回滚解除 -------------------------------------------------
+$ git stash pop
+On branch dev
+Your branch is up to date with 'origin/dev'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   "\346\220\272\347\250\213\345\225\206\346\227\205\346\230\216\347\273\206\350\241\250"
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        test.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (1b5304be76347f4c6b297fed8a7401d234959fea)
+
+------------------------------------------------- 4.添加到本地仓库 -------------------------------------------------
+$ git add .
+ 
+------------------------------------------------- 5.提交到暂存区 -------------------------------------------------
+$ git commit -m "no-push-22-06-28-7"
+[dev 7b5db83] test-wangyingying-22-06-28-1
+ 2 files changed, 74 insertions(+), 11 deletions(-)
+ create mode 100644 "sql/superset\346\234\254\345\234\260\346\212\245\350\241\250/\351\241\271\347\233\256\344\272\272\345\212\233\346\210\220\346\234\254/test.txt"
+
+------------------------------------------------- 6.推送代码从本地dev到远程dev -------------------------------------------------
+$ git push origin dev:dev
+Enumerating objects: 12, done.
+Counting objects: 100% (12/12), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (7/7), 1.55 KiB | 1.55 MiB/s, done.
+Total 7 (delta 5), reused 0 (delta 0), pack-reused 0
+remote:
+remote: To create a merge request for dev, visit:
+remote:   http://172.31.234.12:10080/bigdata/scripts/-/merge_requests/new?merge_request%5Bsource_branch%5D=dev
+remote:
+To ssh://172.31.234.12:10022/bigdata/scripts.git
+   e1c286c..7b5db83  dev -> dev
+
+------------------------------------------------- git 获取分支 -------------------------------------------------
+lenovo@DESKTOP-RVL4IBQ MINGW64 /d/data_quality (master)
+$ git branch -a
+* master
+  remotes/origin/HEAD -> origin/master
+  remotes/origin/dev
+  remotes/origin/master
+
+
+
+
+
+

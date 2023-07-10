@@ -1,0 +1,28 @@
+/*间隔时间60分钟，一小时*/
+/*开始时间为2021-04-19 10:00:00'*/
+SELECT tmp5.times '时间段',
+       tmp5.station_code '工作站编码',
+       SUM(tmp5.into_station_times) '进站次数',
+       count(distinct tmp5.job_id) '完成订单行数'
+from (
+   SELECT ceil(TIMESTAMPDIFF(SECOND, '2021-04-19 10:00:00',tmp1.updated_date)/3600) times,
+       IF(@last_bucket_move_job != tmp1.bucket_move_job_id,@batch_no:=@batch_no+1,@batch_no) batch_no,
+       IF(@last_bucket_move_job != tmp1.bucket_move_job_id,1,0) into_station_times,
+       IF(@last_bucket_move_job != tmp1.bucket_move_job_id,1,IF(@last_group_job_id != tmp1.group_job_id,1,0)) open_win_times,
+       tmp1.quantity,
+       tmp1.job_id,
+       tmp1.station_code,
+
+       IF(@last_bucket_move_job != tmp1.bucket_move_job_id,@last_bucket_move_job:=tmp1.bucket_move_job_id,@last_bucket_move_job) last_bucket_move_job,
+       IF(@last_group_job_id != tmp1.group_job_id,@last_group_job_id := tmp1.group_job_id,@last_group_job_id) last_group_job_id
+   FROM (
+       SELECT stg.group_job_id, pj.bucket_move_job_id, pj.agv_code, pj.station_code, pj.quantity, stg.updated_date,pj.job_id 
+        FROM evo_wcs_g2p.`station_task_group` stg 
+        LEFT JOIN evo_wcs_g2p.picking_job pj ON stg.job_id = pj.job_id 
+         WHERE stg.updated_date between '2021-04-19 10:00:00' and DATE_ADD('2021-04-19 10:00:00',INTERVAL 6*60 MINUTE)
+       ORDER BY pj.station_code,stg.group_job_id, stg.updated_date ) tmp1,
+   (select @last_bucket_move_job := 0) tmp2,
+   (select @batch_no := 0) tmp3,
+   (select @last_group_job_id := '') tmp4
+  ) tmp5
+GROUP BY tmp5.times,tmp5.station_code;	

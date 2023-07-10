@@ -1,0 +1,162 @@
+-- 性能指标：时间段、qty、进站次数、 k-value、 一次进站弹几次窗、 一次弹窗拣几件
+SELECT tt.rn as '时间段',tt.qty as 'qty',tt.enter_times as '进站次数',tt.k_vlue as 'k-value',tt.oneInToWin as '一次进站弹几次窗',tt.onWinToNum as '一次弹窗拣几件'
+,@row_num_1 := 0,@num_agv_1 := 0,@num_win_1 := 0,@quantity_1 := 0,@last_group_job_id_1 := null,@last_agv_1 := null
+,@row_num_2 := 0,@num_agv_2 := 0,@num_win_2 := 0,@quantity_2 := 0,@last_group_job_id_2 := null,@last_agv_2 := null
+,@row_num_3 := 0,@num_agv_3 := 0,@num_win_3 := 0,@quantity_3 := 0,@last_group_job_id_3 := null,@last_agv_3 := null
+,@row_num_4 := 0,@num_agv_4 := 0,@num_win_4 := 0,@quantity_4 := 0,@last_group_job_id_4 := null,@last_agv_4 := null
+,@row_num_5 := 0,@num_agv_5 := 0,@num_win_5 := 0,@quantity_5 := 0,@last_group_job_id_5 := null,@last_agv_5 := null
+,@row_num_6 := 0,@num_agv_6 := 0,@num_win_6 := 0,@quantity_6 := 0,@last_group_job_id_6 := null,@last_agv_6 := null
+,{{begin_time}}
+,@interval_time:=60
+
+
+FROM (
+SELECT 
+	1 as 'rn',
+	max(qty) as 'qty', 
+	max(ta.agv_num) as 'enter_times',
+	max(qty)/max(ta.agv_num) as 'k_vlue',  
+	max(ta.win_num)/max(ta.agv_num) as 'oneInToWin', 
+	max(qty)/max(ta.win_num) as 'onWinToNum'
+FROM (
+	SELECT 
+		@row_num_1 := @row_num_1 + 1 as row_num,
+		(case when @last_agv_1 = tmp.agv_code then @num_agv_1 else @num_agv_1 := @num_agv_1 + 1 end) as agv_num,
+		(case when @last_group_job_id_1 = tmp.group_job_id then @num_win_1 else @num_win_1 := @num_win_1 + 1 end) as win_num, 
+		@quantity_1 := @quantity_1 + tmp.quantity as qty,
+		(@last_agv_1 := tmp.agv_code), (@last_group_job_id_1 := tmp.group_job_id)
+	FROM (
+		SELECT stg.group_job_id, stg.job_id, pj.agv_code, pj.station_code, pj.bucket_slot_code, pj.quantity, stg.updated_date 
+		FROM evo_wcs_g2p.`wcs_station_task_group` stg 
+		LEFT JOIN evo_wcs_g2p.wcs_picking_job pj ON stg.job_id = pj.job_id 
+		WHERE stg.updated_date between {{begin_time}} and DATE_ADD({{begin_time}},INTERVAL @interval_time MINUTE)
+
+	) tmp
+) ta
+
+UNION ALL
+
+SELECT 
+	2 as 'rn',
+	max(qty) as 'qty', 
+	max(ta.agv_num) as 'enter_times',
+	max(qty)/max(ta.agv_num) as 'k_vlue',  
+	max(ta.win_num)/max(ta.agv_num) as 'oneInToWin', 
+	max(qty)/max(ta.win_num) as 'onWinToNum'
+FROM (
+	SELECT 
+		@row_num_2 := @row_num_2 + 1 as row_num,
+		(case when @last_agv_2 = tmp.agv_code then @num_agv_2 else @num_agv_2 := @num_agv_2 + 1 end) as agv_num,
+		(case when @last_group_job_id_2 = tmp.group_job_id then @num_win_2 else @num_win_2 := @num_win_2 + 1 end) as win_num, 
+		@quantity_2 := @quantity_2 + tmp.quantity as qty,
+		(@last_agv_2 := tmp.agv_code), (@last_group_job_id_2 := tmp.group_job_id)
+	FROM (
+		SELECT stg.group_job_id, stg.job_id, pj.agv_code, pj.station_code, pj.bucket_slot_code, pj.quantity, stg.updated_date 
+		FROM evo_wcs_g2p.`wcs_station_task_group` stg 
+		LEFT JOIN evo_wcs_g2p.wcs_picking_job pj ON stg.job_id = pj.job_id 
+		WHERE stg.updated_date between DATE_ADD({{begin_time}},INTERVAL @interval_time MINUTE) and DATE_ADD({{begin_time}},INTERVAL @interval_time*2 MINUTE)
+
+	) tmp
+) ta
+
+UNION ALL
+
+SELECT 
+	3 as 'rn',
+	max(qty) as 'qty', 
+	max(ta.agv_num) as 'enter_times',
+	max(qty)/max(ta.agv_num) as 'k_vlue',  
+	max(ta.win_num)/max(ta.agv_num) as 'oneInToWin', 
+	max(qty)/max(ta.win_num) as 'onWinToNum'
+FROM (
+	SELECT 
+		@row_num_3 := @row_num_3 + 1 as row_num,
+		(case when @last_agv_3 = tmp.agv_code then @num_agv_3 else @num_agv_3 := @num_agv_3 + 1 end) as agv_num,
+		(case when @last_group_job_id_3 = tmp.group_job_id then @num_win_3 else @num_win_3 := @num_win_3 + 1 end) as win_num, 
+		@quantity_3 := @quantity_3 + tmp.quantity as qty,
+		(@last_agv_3 := tmp.agv_code), (@last_group_job_id_3 := tmp.group_job_id)
+	FROM (
+		SELECT stg.group_job_id, stg.job_id, pj.agv_code, pj.station_code, pj.bucket_slot_code, pj.quantity, stg.updated_date 
+		FROM evo_wcs_g2p.`wcs_station_task_group` stg 
+		LEFT JOIN evo_wcs_g2p.wcs_picking_job pj ON stg.job_id = pj.job_id 
+		WHERE stg.updated_date between DATE_ADD({{begin_time}},INTERVAL @interval_time*2 MINUTE) and DATE_ADD({{begin_time}},INTERVAL @interval_time*3 MINUTE)
+
+	) tmp
+) ta
+
+UNION ALL
+
+SELECT 
+	4 as 'rn',
+	max(qty) as 'qty', 
+	max(ta.agv_num) as 'enter_times',
+	max(qty)/max(ta.agv_num) as 'k_vlue',  
+	max(ta.win_num)/max(ta.agv_num) as 'oneInToWin', 
+	max(qty)/max(ta.win_num) as 'onWinToNum'
+FROM (
+	SELECT 
+		@row_num_4 := @row_num_4 + 1 as row_num,
+		(case when @last_agv_4 = tmp.agv_code then @num_agv_4 else @num_agv_4 := @num_agv_4 + 1 end) as agv_num,
+		(case when @last_group_job_id_4 = tmp.group_job_id then @num_win_4 else @num_win_4 := @num_win_4 + 1 end) as win_num, 
+		@quantity_4 := @quantity_4 + tmp.quantity as qty,
+		(@last_agv_4 := tmp.agv_code), (@last_group_job_id_4 := tmp.group_job_id)
+	FROM (
+		SELECT stg.group_job_id, stg.job_id, pj.agv_code, pj.station_code, pj.bucket_slot_code, pj.quantity, stg.updated_date 
+		FROM evo_wcs_g2p.`wcs_station_task_group` stg 
+		LEFT JOIN evo_wcs_g2p.wcs_picking_job pj ON stg.job_id = pj.job_id 
+		WHERE stg.updated_date between DATE_ADD({{begin_time}},INTERVAL @interval_time*3 MINUTE) and DATE_ADD({{begin_time}},INTERVAL @interval_time*4 MINUTE)
+
+	) tmp
+) ta
+
+UNION ALL
+
+SELECT 
+	5 as 'rn',
+	max(qty) as 'qty', 
+	max(ta.agv_num) as 'enter_times',
+	max(qty)/max(ta.agv_num) as 'k_vlue',  
+	max(ta.win_num)/max(ta.agv_num) as 'oneInToWin', 
+	max(qty)/max(ta.win_num) as 'onWinToNum'
+FROM (
+	SELECT 
+		@row_num_5 := @row_num_5 + 1 as row_num,
+		(case when @last_agv_5 = tmp.agv_code then @num_agv_5 else @num_agv_5 := @num_agv_5 + 1 end) as agv_num,
+		(case when @last_group_job_id_5 = tmp.group_job_id then @num_win_5 else @num_win_5 := @num_win_5 + 1 end) as win_num, 
+		@quantity_5 := @quantity_5 + tmp.quantity as qty,
+		(@last_agv_5 := tmp.agv_code), (@last_group_job_id_5 := tmp.group_job_id)
+	FROM (
+		SELECT stg.group_job_id, stg.job_id, pj.agv_code, pj.station_code, pj.bucket_slot_code, pj.quantity, stg.updated_date 
+		FROM evo_wcs_g2p.`wcs_station_task_group` stg 
+		LEFT JOIN evo_wcs_g2p.wcs_picking_job pj ON stg.job_id = pj.job_id 
+		WHERE stg.updated_date between DATE_ADD({{begin_time}},INTERVAL @interval_time*4 MINUTE) and DATE_ADD({{begin_time}},INTERVAL @interval_time*5 MINUTE)
+
+	) tmp
+) ta
+
+UNION ALL
+
+SELECT 
+	6 as 'rn',
+	max(qty) as 'qty', 
+	max(ta.agv_num) as 'enter_times',
+	max(qty)/max(ta.agv_num) as 'k_vlue',  
+	max(ta.win_num)/max(ta.agv_num) as 'oneInToWin', 
+	max(qty)/max(ta.win_num) as 'onWinToNum'
+FROM (
+	SELECT 
+		@row_num_6 := @row_num_6 + 1 as row_num,
+		(case when @last_agv_6 = tmp.agv_code then @num_agv_6 else @num_agv_6 := @num_agv_6 + 1 end) as agv_num,
+		(case when @last_group_job_id_6 = tmp.group_job_id then @num_win_6 else @num_win_6 := @num_win_6 + 1 end) as win_num, 
+		@quantity_6 := @quantity_6 + tmp.quantity as qty,
+		(@last_agv_6 := tmp.agv_code), (@last_group_job_id_6 := tmp.group_job_id)
+	FROM (
+		SELECT stg.group_job_id, stg.job_id, pj.agv_code, pj.station_code, pj.bucket_slot_code, pj.quantity, stg.updated_date 
+		FROM evo_wcs_g2p.`wcs_station_task_group` stg 
+		LEFT JOIN evo_wcs_g2p.wcs_picking_job pj ON stg.job_id = pj.job_id 
+		WHERE stg.updated_date between DATE_ADD({{begin_time}},INTERVAL @interval_time*5 MINUTE) and DATE_ADD({{begin_time}},INTERVAL @interval_time*6 MINUTE)
+
+	) tmp
+) ta
+) tt
+;

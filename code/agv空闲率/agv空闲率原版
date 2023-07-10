@@ -1,0 +1,131 @@
+-- 间隔X分钟统计
+SELECT 
+@end_time := (SELECT DATE_ADD(MIN(created_date),INTERVAL 10 MINUTE) FROM evo_rcs.rcs_agv_history_job) AS 结束时间,
+@interval_time :=30 AS 间隔时间, -- 间隔时间 单位：分钟
+-- 时间区间内，完成作业单数，完成订单行数，完成拣货件数
+t2.rn as '时间段',
+CASE WHEN t2.rn=1 then tmp.free_time_1
+WHEN t2.rn=2 then tmp.free_time_2
+WHEN t2.rn=3 then tmp.free_time_3
+WHEN t2.rn=4 then tmp.free_time_4
+WHEN t2.rn=5 then tmp.free_time_5
+WHEN t2.rn=6 then tmp.free_time_6
+end as '空闲时间',
+CASE WHEN t2.rn=1 then tmp.free_rate_1
+WHEN t2.rn=2 then tmp.free_rate_2
+WHEN t2.rn=3 then tmp.free_rate_3
+WHEN t2.rn=4 then tmp.free_rate_4
+WHEN t2.rn=5 then tmp.free_rate_5
+WHEN t2.rn=6 then tmp.free_rate_6
+end as '空闲率'
+FROM (
+SELECT AVG(tt.free_time_1) free_time_1,AVG(tt.free_rate_1) free_rate_1,
+AVG(tt.free_time_2) free_time_2,AVG(tt.free_rate_2) free_rate_2,
+AVG(tt.free_time_3) free_time_3,AVG(tt.free_rate_3) free_rate_3,
+AVG(tt.free_time_4) free_time_4,AVG(tt.free_rate_4) free_rate_4,
+AVG(tt.free_time_5) free_time_5,AVG(tt.free_rate_5) free_rate_5,
+AVG(tt.free_time_6) free_time_6,AVG(tt.free_rate_6) free_rate_6
+FROM (
+select j.agv_id,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= @end_time AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= @end_time AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time MINUTE)) 
+     WHEN j.gmt_create< @end_time AND j.gmt_modified >= @end_time  AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,@end_time,j.gmt_modified) 
+     WHEN j.gmt_create< @end_time AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,@end_time,DATE_ADD(@end_time,INTERVAL @interval_time MINUTE))
+     ELSE 0 END) free_time_1,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= @end_time AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= @end_time AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time MINUTE)) 
+     WHEN j.gmt_create< @end_time AND j.gmt_modified >= @end_time  AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,@end_time,j.gmt_modified) 
+     WHEN j.gmt_create< @end_time AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) THEN TIMESTAMPDIFF(SECOND,@end_time,DATE_ADD(@end_time,INTERVAL @interval_time MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_1,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE))
+     ELSE 0 END) free_time_2,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_2,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE))
+     ELSE 0 END) free_time_3,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*2 MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_3,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE))
+     ELSE 0 END) free_time_4,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*3 MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_4,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE))
+     ELSE 0 END) free_time_5,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*4 MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_5,
+
+@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE))
+     ELSE 0 END) free_time_6,
+(@interval_time*60-SUM(CASE WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,j.gmt_modified) 
+     WHEN j.gmt_create>= DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_create < DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,j.gmt_create,DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE)) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified >= DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) AND j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE),j.gmt_modified) 
+     WHEN j.gmt_create< DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE) AND j.gmt_modified > DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE) THEN TIMESTAMPDIFF(SECOND,DATE_ADD(@end_time,INTERVAL @interval_time*5 MINUTE),DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE))
+     ELSE 0 END))/(@interval_time*60) free_rate_6
+
+from evo_rcs.basic_agv ba
+LEFT JOIN evo_rcs.rcs_agv_history_job j
+  ON ba.agv_code = j.agv_id
+where 
+(
+(
+j.gmt_create >=@end_time and j.gmt_create<DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE)
+)
+or
+(
+j.gmt_create<@end_time and j.gmt_modified>@end_time
+)
+or 
+(
+j.gmt_create<@end_time and j.gmt_modified>=@end_time and j.gmt_modified < DATE_ADD(@end_time,INTERVAL @interval_time*6 MINUTE)
+)
+)
+GROUP BY j.agv_id
+) tt) tmp,
+(
+SELECT 1 rn
+UNION ALL 
+SELECT 2 rn
+UNION ALL 
+SELECT 3 rn
+UNION ALL 
+SELECT 4 rn
+UNION ALL 
+SELECT 5 rn
+UNION ALL 
+SELECT 6 rn
+)t2
+GROUP BY t2.rn
+
+;

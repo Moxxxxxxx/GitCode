@@ -1,0 +1,15 @@
+-- 效率指标概览平均值
+INSERT INTO eff_index(time,order_num,order_linenum,sku_num,station_slot_times,into_station_times,win_open_times,once_win_open_times,once_picking_quantity,once_station_slot_times,once_order_linenum)
+SELECT 
+    @time := '平均值' AS 'time',
+    cast(SUM(order_num)/count(time) as decimal(10,2))AS 'order_num',
+    cast(SUM(order_linenum)/count(time) as decimal(10,2))AS 'order_linenum',
+    cast(SUM(sku_num)/count(time) as decimal(10,2))AS 'sku_num',
+    cast(SUM(station_slot_times)/count(time) as decimal(10,2))AS 'station_slot_times',
+    cast(SUM(into_station_times)/count(time) as decimal(10,2)) AS 'into_station_times',
+	cast(SUM(win_open_times)/count(time) as decimal(10,2)) AS 'win_open_times',
+    cast(SUM(once_win_open_times)/count(time) as decimal(10,2))AS 'once_win_open_times',
+    cast(SUM(once_picking_quantity)/count(time) as decimal(10,2))AS 'once_picking_quantity',
+    cast(SUM(once_station_slot_times)/count(time) as decimal(10,2))AS 'once_station_slot_times',
+	cast(SUM(once_order_linenum)/count(time) as decimal(10,2))AS 'once_order_linenum'
+FROM eff_index eix

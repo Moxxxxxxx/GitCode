@@ -1,0 +1,259 @@
+{% include "data/template-ui.html" %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" type="text/css" href="/static/css/datatables/foundation.min.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/datatables/dataTables.bootstrap4.min.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/datatables/fixedHeader.foundation.min.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/datatables/buttons.foundation.min.css" />
+
+<style>
+    .button-group .button {
+        font-size: 12px;
+        padding: 4px 10px;
+    }
+
+    .table-bordered thead td,
+    .table-bordered thead th {
+        border-bottom-width: 1px !important;
+    }
+
+    .container-fluid {
+        padding: 0 10 0;
+    }
+
+    table {
+        font-size: 14px;
+    }
+
+    select{
+        border: 0 none;
+        border-bottom: 1px solid;
+        appearance:none;
+        -moz-appearance:none; /* Firefox */
+        -webkit-appearance:none; /* Safari 和 Chrome */
+        padding: unset;
+        height: unset;
+        padding-left: 2%;
+        padding-right: 1%;
+        /*padding-top: 0.8rem;*/
+        margin: unset;
+    }
+    select::-ms-expand { display: none; }
+    select:focus{
+        border: 0 none;
+        border-bottom: 1px solid;
+        box-shadow: unset;
+    }
+
+    .grid-x {
+        padding-left: 30px;
+    }
+    .dataTables_wrapper {
+        padding-top: unset;
+    }
+
+    /* 超长文字单元格省略号显示 */
+    .gridtitle{
+        text-overflow: ellipsis;    /*超长部分以...代替*/
+        white-space: nowrap;/*文本不换行*/
+        max-width: 150px;/*最大宽度*/
+        overflow: hidden;/*超长部分隐藏掉*/
+　　}
+</style>
+
+<div class="page-wrapper">
+    <!-- 标题 -->
+    <div class="row page-titles">
+        <div class="col-md-4 align-self-center">
+            <h3 class="text-primary">数据质量检核报告</h3>
+        </div>
+
+        <div class="col-md-5 align-self-center">
+            <div class="row">
+                数据日期：
+                <select id="data_year" onchange="GetQuarter();" style="width: 60px;"></select><span style="padding-right: 5px;">年</span>
+                <button type="button" class="btn btn-primary btn-xs p310" onclick="ChangeDataDate();" style="border-radius: .25rem;"><i class="fa fa-search"></i></button>
+            </div>
+        </div>
+
+        <div class="col-md-3 align-self-center">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="../../data/index">主页</a></li>
+                <li class="breadcrumb-item active">检核报告</li>
+            </ol>
+        </div>
+    </div>
+
+        <div class="container-fluid animated fadeInUp">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <!-- 正文 -->
+                    <div class="card-content">
+                        <table id="example" class="table-bordered" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>行号</th>
+                                    <th>系统</th>
+                                    <th>检查项</th>
+                                    <th>目标表</th>
+                                    <th>是否数据中心指标</th>
+                                    <th>问题分类</th>
+                                    <th>报送SQL</th>
+                                    <th>报送数据量</th>
+                                    <th>问题数据量</th>
+                                    <th>问题占比</th>
+                                    <th>备注</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- footer -->
+<footer class="navbar-fixed-bottom" style="line-height: 10px;font-size:13px;">
+    <div class="footer">
+        © 2020 data quality
+    </div>
+</footer>
+</div>
+
+<!-- DataTables JS -->                    
+<script type="text/javascript" src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.bootcss.com/datatables/1.10.20/js/dataTables.foundation.min.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/ColReorder-1.5.0/js/dataTables.colReorder.min.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/Buttons-1.5.6/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/Buttons-1.5.6/js/buttons.foundation.min.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/Buttons-1.5.6/js/buttons.html5.min.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/Buttons-1.5.6/js/buttons.print.min.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/Buttons-1.5.6/js/buttons.colVis.min.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/JSZip-2.5.0/jszip.min.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/pdfmake-0.1.36/pdfmake.min.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/pdfmake-0.1.36/vfs_fonts.js"></script>
+<script type="text/javascript" src="/static/js/DataTables/FixedHeader-3.1.4/js/dataTables.fixedHeader.min.js"></script>
+
+<!-- 设置头像 / 设置日期 -->
+<script src="/static/js/init.js"></script>
+
+<script type="text/javascript" class="init">
+    $(document).ready(function () {
+        var table = $('#example').DataTable({
+            //使用ajax请求检核结果明细，填充datatables
+            "ajax": {
+                "url": "../../api/quality/detail",
+                "type": "GET",
+                "async": false,     //默认为true即异步加载接口数据，会导致buttons不显示
+                "data": function (d) {
+                    return $.extend({}, d, {
+                        "productname": "{{ productname }}",
+                        "year": localStorage.getItem("selected_year"),
+                        "quarter": localStorage.getItem("selected_quarter"),
+                        "month": localStorage.getItem("selected_month"),
+                        "day": localStorage.getItem("selected_day"),
+                    });
+                }
+            },
+
+            "columns": [
+                {"data": "id"},
+                {"data": "source_system"},
+                {"data": "check_item"},
+                {"data": "target_table"},
+                {"data": "risk_market_item"},
+                {"data": "problem_type"},
+                {"data": "check_sql", "className":"gridtitle",
+                    "createdCell": function (td, cellData, rowData, row, col) {
+                        $(td).attr('title', cellData);//设置单元格title，鼠标移上去时悬浮框展示全部内容
+                    }
+                },
+                {"data": "item_count"},
+                {"data": "problem_count"},
+                {"data": "problem_per"},
+                {"data": "note", "className":"gridtitle",
+                    "createdCell": function (td, cellData, rowData, row, col) {
+                        $(td).attr('title', cellData);//设置单元格title，鼠标移上去时悬浮框展示全部内容
+                    }
+                },
+            ],
+
+            "createdRow": function (row, data, dataIndex) {
+                //设置数据标准项浮窗
+                $('td:eq(2)', row).attr("data-toggle", "popover");
+                $('td:eq(2)', row).attr("id", data["check_item"]);
+
+                //若问题占比大于0，则把表格问题占比列'td:eq(-2)'标红
+                if (data['problem_per'] != null){
+                    if (data['problem_per'].replace(/\%/g, '') > 0) {
+                        $('td:eq(-2)', row).css('color', 'red');
+                    }
+                }
+            },
+
+            "paging": false,
+            "fixedHeader": true, // 固定表头
+            "colReorder": true, // 可拖动列
+            "stateSave": true,
+            "buttons": [
+                {
+                    'extend': 'excel',
+                    'text': '导出Excel',
+                    'className': 'btn btn-primary',
+                },
+                {
+                    'extend': 'colvis',
+                    'text': '隐藏列',
+                    'className': 'btn btn-primary',
+                },
+            ],
+            "language": {
+                "info": "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+                "sSearch": "搜索:",
+            },
+        });
+        
+        table.buttons().container().appendTo('#example_wrapper .small-6.columns:eq(0)');
+    });
+
+    $(function() {
+        $("[data-toggle='popover']").popover({
+            html : true,
+            placement: "right",
+            trigger: "hover focus",
+            container: "body",
+            title: "业务定义与业务规则",
+            delay:{show:100, hide:200},
+            content: function() {
+                var value = $(this).attr("id");
+                return content(value);
+            }
+        });
+    });
+
+    //动态查询数据标准项的定义
+    function content(value) {
+        var hover_data;
+        $.ajax({
+            type : "GET",
+            async : false,
+            url : "../../api/datastandard/query/detail",
+            data: {
+                std_name: value,    //标准名
+                std_type: "detail"
+            },
+            dataType : "json",
+            success : function(result) {
+                hover_data = $("<form><ul>" + 
+                               "<li><font style=\"font-weight:600;\">业务定义：</font>"+ result.business_definition +"</li>" +
+                               "<li style=\"padding-top:10px;\"><font style=\"font-weight:600;\">业务规则：</font>" + result.business_rule + "</form>");
+            },
+        })
+        return hover_data;
+    }
+</script>
+
+</body>
+
+</html>

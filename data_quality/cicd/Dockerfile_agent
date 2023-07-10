@@ -1,0 +1,6 @@
+FROM python:3.8.2
+WORKDIR /agent
+RUN pip install sanic
+COPY ./container_agent.py .
+EXPOSE 8080
+CMD ["python", "container_agent.py"]

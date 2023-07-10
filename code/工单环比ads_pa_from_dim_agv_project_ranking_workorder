@@ -1,0 +1,123 @@
+#！/bin/bash
+
+
+dbname=quicktronft_db
+hive=/opt/module/hive/bin/hive
+# 如果是输入的日期按照取输入日期；如果没输入日期取当前时间的前一天
+if [ -n "$1" ] ;then
+    pre1_date=$1
+else 
+    pre1_date=`date -d "-1 day" +%F`
+fi
+
+if [ -n "$1" ] ;then
+    pre2_date=`date -d "-1 day $1" +%F`
+else
+    pre2_date=`date -d "-2 day" +%F`
+fi
+
+echo '##############################################此处汇总计算_插入日，7日，30日环比，项目总数等数据 ，此处type为新增,并且插入对应的mysql表##########################'
+
+sql="
+set hive.execution.engine=mr;
+set mapreduce.job.queuename=hive;
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
+set hive.exec.max.dynamic.partitions=1000;
+set hive.exec.max.dynamic.partitions.pernode=500;
+
+use $dbname;
+with oneday_tb_01 as(
+  SELECT  --1日_新增_环比     
+	  thisday.project_code,  
+	   nvl(trunc((thisday.xz_total-lastday.xz_total)/lastday.xz_total,2),0) as oneday_ringratio  --日环比	
+  from 
+	  pre_pa_workorder_ring_ratio_distribute_detail thisday,
+	  pre_pa_workorder_ring_ratio_distribute_detail lastday   
+  where 
+     thisday.insert_date=date_add(lastday.insert_date,1) 
+     and thisday.project_code=lastday.project_code
+     and thisday.insert_date=date_format(current_timestamp(), 'yyyy-MM-dd')
+     ),
+-----------------------------------1周_新增_环比-------------------------
+week_rr_tab as(  --1周_新增_环比
+SELECT      
+	 thisday.project_code,
+	 sum(case when date_add(date_format(current_timestamp(), 'yyyy-MM-dd'),-7)<=thisday.insert_date  then thisday.xz_total else 0 end) as this_week_total, -- 本周总计
+	 sum(case when date_add(date_format(current_timestamp(), 'yyyy-MM-dd'),-14)<=thisday.insert_date
+	          and thisday.insert_date<=date_add(date_format(current_timestamp(), 'yyyy-MM-dd'),-8)
+	          then thisday.xz_total else 0 end) as last_week_total  --1周前总计
+	        
+from   pre_pa_workorder_ring_ratio_distribute_detail thisday  
+group by thisday.project_code
+),
+week_tb_02 as (
+SELECT 		
+		project_code,
+		nvl(trunc((t.this_week_total-t.last_week_total)/t.last_week_total,2),0) as week_ringratio
+from week_rr_tab t),
+-----------------------------------1月_新增_环比-------------------------
+month_rr_tab as(  --1月_新增_环比
+SELECT      
+	 thisday.project_code,
+	 sum(case when date_add(date_format(current_timestamp(), 'yyyy-MM-dd'),-30)<=thisday.insert_date  then thisday.xz_total else 0 end) as this_month_total, -- 本周总计
+	 sum(case when date_add(date_format(current_timestamp(), 'yyyy-MM-dd'),-60)<=thisday.insert_date
+	          and thisday.insert_date<=date_add(date_format(current_timestamp(), 'yyyy-MM-dd'),-31)
+	          then thisday.xz_total else 0 end) as last_month_total  --1周前总计	        
+from   pre_pa_workorder_ring_ratio_distribute_detail thisday  
+group by thisday.project_code
+),
+month_tb_03 as (
+SELECT 	
+	project_code,	
+	nvl(trunc((t.this_month_total-t.last_month_total)/t.last_month_total,2),0) as month_ringratio 
+from month_rr_tab t),
+workorder_total_tb_04 as(
+SELECT 
+project_code,insert_date,count(project_code) as cnt 
+from   
+pre_pa_workorder_ring_ratio_distribute_detail
+group by project_code,insert_date
+)
+
+--   此处汇总计算_插入日，7日，30日环比，项目总数等数据 ，此处type为新增
+insert overwrite table ads_pa_from_dim_agv_project_ranking_workorder
+select '' as id, dt.project_code,wrkt.cnt as stat_value,dt.oneday_ringratio as previously_day,w.week_ringratio as previously_day7,
+m.month_ringratio as previously_day30,
+'新增' as type,
+date_format(current_timestamp(), 'yyyy-MM-dd HH:mm:ss')  as create_time,
+date_format(current_timestamp(), 'yyyy-MM-dd HH:mm:ss')  as update_time
+from oneday_tb_01 dt
+left join week_tb_02  w on  dt.project_code=w.project_code
+left join month_tb_03 m on  dt.project_code=m.project_code
+left join workorder_total_tb_04 wrkt on  dt.project_code=wrkt.project_code and wrkt.insert_date=date_format(current_timestamp(),'yyyy-MM-dd')
+"
+$hive -e "$sql"
+
+
+HOSTNAME="172.31.237.5"                                         #数据库信息
+PORT="3306"
+USERNAME="root"
+PASSWORD="tClEDdt6"
+DBNAME="kc_qa"                                           #hive 数据库名称
+
+# ads_bpm_pm_project_brief信息输出到:qa_project_version_detail表
+#插入数据
+mysql -h${HOSTNAME}  -P${PORT}  -u${USERNAME} -p${PASSWORD} ${DBNAME} -e "
+truncate table qa_project_ranking_workorder;
+"
+#2. ads_pa_from_dim_agv_project_ranking_workorder  信息输出到:agv_project_ranking_workorder
+/opt/module/sqoop/bin/sqoop export \
+--connect "jdbc:mysql://172.31.237.5:3306/kc_qa?useUnicode=true&characterEncoding=utf-8" \
+--username root \
+--password tClEDdt6 \
+--table qa_project_ranking_workorder \
+--export-dir /user/hive/warehouse/quicktronft_db.db/ads_pa_from_dim_agv_project_ranking_workorder \
+--num-mappers 1  \
+--input-null-string '\\N' \
+--input-null-non-string '\\N' \
+--input-fields-terminated-by "\t" \
+--columns "id,project_code,stat_value,previously_day,previously_day7,previously_day30,type,create_time,update_time"
+ 
+
+

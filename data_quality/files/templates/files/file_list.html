@@ -1,0 +1,50 @@
+{% include "data/template-ui.html" %}
+
+<div class="page-wrapper">
+	<!-- 正文 -->
+	<div class="container-fluid animated fadeInUp">
+		<div class="col-12">
+			<div class="card">
+				<div class="card-title">
+					<div class="col-md-10">
+                        <h4 class="text-primary">{{ title }}</h4>
+                    </div>
+				</div>
+
+				<div class="card-content">
+					<table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>文档类型</th>
+                                <th>文件名</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for files in all_files %}
+                            <tr>
+                                <td><iframe src="../../static/icons/file-type-icons/file_type_{{ files.0 }}.svg" width="26" height="26" frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="no" allowtransparency="yes"></iframe></td>
+                                <td>{{ files.1 }}</td>
+                                <td><a href="../../api/files/download?filename={{ files.1 }}">下载</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+				</div>
+			</div>
+		</div>
+    </div>
+</div>
+
+<footer class="navbar-fixed-bottom" style="line-height: 10px;font-size:13px;">
+    <div class="footer">
+        © 2021 data quality
+    </div>
+</footer>
+
+<!-- 设置头像 / 设置日期 -->
+<script src="/static/js/init.js"></script>
+</body>
+
+</html>

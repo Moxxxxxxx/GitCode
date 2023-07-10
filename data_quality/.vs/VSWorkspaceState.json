@@ -1,0 +1,14 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\authorize",
+    "\\authorize\\templates",
+    "\\authorize\\templates\\authorize",
+    "\\check",
+    "\\check\\templates",
+    "\\check\\templates\\check",
+    "\\sql"
+  ],
+  "SelectedNode": "\\authorize\\templates\\authorize\\login.html",
+  "PreviewInSolutionExplorer": false
+}

@@ -1,0 +1,79 @@
+#!/bin/bash
+
+APP=quicktronft_db
+hive=/opt/module/hive/bin/hive
+
+# 如果是输入的日期按照取输入日期；如果没输入日期取当前时间的前一天
+if [ -n "$1" ] ;then
+    do_date=$1
+else 
+    do_date=`date -d "-1 day" +%F`
+fi
+
+############################################################
+#dwd_pa_execl_project_workorder_detail与dwd_pa_dd_qualitydata_version_evaluation合并后得到ads_agv_project_workorder_daily，然后插入mysql:agv_project_workorder_daily
+#暂时计算了2021-06-27的数据，等有真实数据了，把日期写活，用T-1日，即可
+sql="
+set mapreduce.job.queuename=hive;
+set hive.exec.dynamic.partition.mode=nonstrict;
+SET hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
+-----------------------------------------
+with items_tb as (
+SELECT  
+  gd.project_code ,ver.product_name as product_id,1 as ft_id,ver.version,current_date as cur_date,
+  gd.workorder_begin_time, gd.schedule_status,
+  nvl(TRUNC((unix_timestamp(response_start_time) - unix_timestamp(workorder_begin_time))/(60*24),2),0) as impl_resp_efficiency,
+  nvl(TRUNC((unix_timestamp(off_time) - unix_timestamp(workorder_begin_time))/(60*24),2),0)  as workorder_resolve_efficiency
+ from  ${APP}.dwd_pa_execl_project_workorder_detail  gd 
+  left join ${APP}.dwd_pa_dd_qualitydata_version_evaluation ver
+  on  gd.project_code =ver.project_code
+  order by gd.workorder_begin_time desc
+  )  
+  insert overwrite table ${APP}.ads_agv_project_workorder_daily
+  SELECT 
+      '' as id,
+      product_id,
+      ft_id,
+      version,
+      sum(case when substr(workorder_begin_time,0,10)='2021-06-27' then 1 else 0 end) as new_workorder_today,
+      count(*) as all_workorder_today,
+      sum(case when schedule_status='OPEN' then 1 else 0 end) as unsolve_workorder_today,
+      '2021-06-27' tj_date,
+      sum(case when substr(workorder_begin_time,0,10)='2021-06-27' then impl_resp_efficiency else 0 end) as impl_resp_efficiency,
+      sum(case when substr(workorder_begin_time,0,10)='2021-06-27' then workorder_resolve_efficiency else 0 end) as workorder_resolve_efficiency,
+      date_format(current_timestamp(), 'yyyy-MM-dd HH:mm:ss')  as create_time,
+      date_format(current_timestamp(), 'yyyy-MM-dd HH:mm:ss')  as update_time
+  from items_tb 
+  group by product_id,ft_id,version;
+"
+$hive -e "$sql"
+###############################################################
+
+## MYSQL
+
+#!/bin/bash
+
+HOSTNAME="172.31.237.5"                                         #数据库信息
+PORT="3306"
+USERNAME="root"
+PASSWORD="tClEDdt6"
+DBNAME="kc_qa"                                           #hive 数据库名称
+
+# ads_bpm_pm_project_brief信息输出到:agv_project_version_detail表
+#插入数据
+mysql -h${HOSTNAME}  -P${PORT}  -u${USERNAME} -p${PASSWORD} ${DBNAME} -e "
+truncate table qa_project_workorder_daily;
+"
+#2. ads_agv_project_workorder_daily  信息输出到mysql:qa_project_workorder_daily
+/opt/module/sqoop/bin/sqoop export \
+--connect "jdbc:mysql://172.31.237.5:3306/kc_qa?useUnicode=true&characterEncoding=utf-8" \
+--username root \
+--password tClEDdt6 \
+--table qa_project_workorder_daily \
+--export-dir /user/hive/warehouse/quicktronft_db.db/ads_agv_project_workorder_daily \
+--num-mappers 1  \
+--input-null-string '\\N' \
+--input-null-non-string '\\N' \
+--input-fields-terminated-by "\t" \
+--columns "id,product_id,ft_id,current_version_id,new_workorder_today,all_workorder_today,unsolve_workorder_today,cur_date,impl_resp_efficiency,workorder_resolve_efficiency,create_time,update_time"
+

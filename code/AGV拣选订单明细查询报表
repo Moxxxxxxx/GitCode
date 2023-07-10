@@ -1,0 +1,17 @@
+SET @begin_time = '2021-07-17 00:00:00';
+SET @interval_time = 60;
+SET @line_num = 6;
+SELECT ofd.owner_code AS '货主编码',
+       o.picking_order_number AS '出库单号',
+       ofd.sku_id AS 'SKU',
+       SUM(ofd.quantity) AS '拣选数量',
+       ofd.bucket_slot_code AS '拣选库位',
+       DATE_FORMAT(o.created_date,'%Y-%m-%d') AS '拣货日期',
+       DATE_FORMAT(o.created_date,'%H:%i:%s')AS '拣货时间'
+FROM wes_picking_order o
+JOIN wes_picking_order_detail od
+  ON od.picking_order_id = o.id
+JOIN wes_picking_order_fulfill_detail ofd
+  ON ofd.picking_order_detail_id = od.id
+WHERE o.last_updated_date BETWEEN @begin_time AND DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE)
+GROUP BY o.picking_order_number,ofd.sku_id,ofd.bucket_slot_code

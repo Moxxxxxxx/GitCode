@@ -1,0 +1,18 @@
+-- 效率指标详表平均值
+-- 插入eff_index_time后需要整体按time排序后输出
+INSERT INTO eff_index_time(time,station_code,into_station_times,order_linenum,sku_num,station_slot_times,win_open_times,once_win_open_times,once_picking_quantity,once_station_slot_times,once_order_linenum,station_free_time)
+SELECT time,
+    @station_code:='平均值' as 'station_code', -- 工作站编码
+	cast(SUM(into_station_times)/count(DISTINCT station_code) as decimal(10,2)) AS 'into_station_times', -- 进站次数
+    cast(SUM(order_linenum)/count(DISTINCT station_code) as decimal(10,2))AS 'order_linenum', -- 完成订单行数
+    cast(SUM(sku_num)/count(DISTINCT station_code) as decimal(10,2))AS 'sku_num',  -- 完成货品件数
+    cast(SUM(station_slot_times)/count(DISTINCT station_code) as decimal(10,2))AS 'station_slot_times', -- 命中槽位次数
+	cast(SUM(win_open_times)/count(DISTINCT station_code) as decimal(10,2))AS 'win_open_times', -- 弹窗次数
+    cast(SUM(once_win_open_times)/count(DISTINCT station_code) as decimal(10,2))AS 'once_win_open_times', -- 一次进站弹窗次数
+    cast(SUM(once_picking_quantity)/count(DISTINCT station_code) as decimal(10,2))AS 'once_picking_quantity', -- 一次进站完成货品件数
+    cast(SUM(once_station_slot_times)/count(DISTINCT station_code) as decimal(10,2))AS 'once_station_slot_times', -- 一次弹窗命中槽位次数
+	cast(SUM(once_order_linenum)/count(DISTINCT station_code) as decimal(10,2))AS 'once_order_linenum', -- 一次进站完成订单行数
+    cast(SUM(station_free_time)/count(DISTINCT station_code) as decimal(10,2)) as 'station_free_time' -- 工作站空闲率
+FROM eff_index_time eix
+GROUP BY time
+ORDER BY time 

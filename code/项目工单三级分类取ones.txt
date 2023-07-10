@@ -1,0 +1,271 @@
+select ''                                                                                    as id, -- 主键
+       ftw.ft_name, -- 所属产品线
+       t.project_code, -- 项目编码
+       t.project_name, -- 项目名称
+       t.project_operation_state, -- 项目运营阶段
+       t.product_name, -- 场景（即产品名称）
+       t.current_version, -- 产品版本
+       t.ticket_id, -- 工单编码
+       t.summary, -- 工单标题
+       t.first_category, -- 一级分类（现象）
+       t.second_category, -- 二级分类（现象）
+       t.third_category, -- 三级分类（现象）
+       t.first_class, -- 一级分类（模块）
+       t.second_class, -- 二级分类（模块）
+       t.third_class, -- 三级分类（模块）
+       t.memo, -- 工单描述
+       t.case_status, -- 工单状态（1-未响应，2-已响应，3-处理中）
+       t.case_origin_code, -- 工单来源（微信，钉钉，微信后台，钉钉后台）
+       case when t.duty_type in ('早班', '中班') then '白班' when t.duty_type = '晚班' then '夜班' end as duty_type, --值班（白班，夜班）
+       case
+           when t.close_name = '售后' or t.close_name = '实施' then '设备故障工单'
+           when t.close_name = '技术支持' or (t.close_name = '研发' and t.issue_type_cname = '任务') then '恢复工单'
+           when t.close_name = '研发' and t.issue_type_cname = '缺陷' then '缺陷工单'
+           when t.close_name = '硬件自动化' then '硬件自动化工单'
+           else '其他工单'
+           end                                                                               as work_order_type, -- 工单类型（设备故障工单，恢复工单，缺陷工单，硬件自动化工单，其他工单）
+       t.problem_type, -- 问题类型
+       date_format(t.created_time, 'yyyy-MM-dd HH:mm:ss')                                    as created_time, -- 工单创建时间
+       t.owner_name                                                                          as te_user_name, -- 工单对应TE成员
+       date_format(t.respond_time, 'yyyy-MM-dd HH:mm:ss')                                    as respond_time, --工单响应时间
+       t.respond_user, -- 工单响应成员
+       cast(round(t.create_respond_seconds / 3600, 2) as decimal(10, 2))                     as respond_duration, -- 工单响应时长
+       case when t.is_te_autonomous = '1' then 'TE自主解决' else '非TE自主解决' end                as is_te_autonomous, -- 是否TE自主解决（TE自主解决，非TE自主解决）
+       t.issue_type_cname, --转ones的工作项类型（任务，缺陷）
+       date_format(t.to_rb_time, 'yyyy-MM-dd HH:mm:ss')                                      as to_rb_time, -- 转ones的时间
+       date_format(t.solve_time, 'yyyy-MM-dd HH:mm:ss')                                      as rb_solve_time, -- ones研发解决时间
+       cast(round((unix_timestamp(t.solve_time) - unix_timestamp(t.to_rb_time))/ 3600, 2) as decimal(10, 2))   as solve_duration, -- ones研发解决时长
+       t.org_name_2                                                                          as rb_owner_name, -- ones研发处理人所属ft
+       t.task_assign_name                                                                    as rd_user_name, -- ones研发处理人
+       t.ones_close_time, -- ones工单关闭时间
+       t.ones_close_user, -- ones工单关闭人
+       cast(round((unix_timestamp(t.ones_close_time) - unix_timestamp(t.to_rb_time))/ 3600, 2) as decimal(10, 2))   as ones_close_duration, -- ones工单关闭时长
+       date_format(t.close_time, 'yyyy-MM-dd HH:mm:ss')                                      as close_time, -- 工单关闭时间
+       t.close_name, -- 工单关闭方（售后，技术支持，研发）
+       t.close_user, -- 工单关闭人
+       cast(round(t.create_close_seconds / 3600, 2) as decimal(10, 2))                       as close_duration, -- 工单关闭时长
+       t.person_charge_num, -- 工单经手人数
+       t.is_repeat_activate, -- 是否二次激活
+       date_format(current_timestamp(), 'yyyy-MM-dd HH:mm:ss')                               as create_time,
+       date_format(current_timestamp(), 'yyyy-MM-dd HH:mm:ss')                               as update_time
+from (SELECT distinct tft.ft_id,
+                      tft.ft_name
+      from ${dim_dbname}.dim_ft_team_info_offline tft) ftw
+         left join
+     (select if(tpf.belongto_ft is null,'未知',tpf.belongto_ft) as ft_name,
+             t.project_code,
+             tpf.project_name,
+             if(tpf.project_operation_state_group = 'UNKNOWN','未知',tpf.project_operation_state_group) as project_operation_state,
+             if(tpf.product_name = 'UNKNOWN','未知',tpf.product_name) as product_name,
+             if(tpf.current_version = 'UNKNOWN','其它',tpf.current_version) as current_version,
+             t.ticket_id,
+             t.memo,
+             t.case_status,
+             t.case_origin_code,
+             t.close_name,
+             t.created_time,
+             t.respond_user,
+             t.respond_time,
+             t.close_user,
+             t.close_time,
+             t.to_rb_time,
+             t.create_close_seconds,
+             t.owner_name,
+             t.duty_type,
+             t.create_respond_seconds,
+             t.first_category, -- 工单系统一级分类（现象）
+             t.second_category, -- 工单系统二级分类（现象）
+             t.third_category, -- 工单系统三级分类（现象）
+             *IF(t.close_name = '研发',t1.first_class,t.first_category), -- 关闭方为研发，取ones系统一级分类（模块），否则取工单系统一级分类（现象）
+             *IF(t.close_name = '研发',t1.second_class,t.second_class), -- 关闭方为研发，取ones系统二级分类（模块），否则取工单系统二级分类（模块）
+             *IF(t.close_name = '研发',t1.third_class,t.third_class), -- 关闭方为研发，取ones系统三级分类（模块），否则取工单系统三级分类（模块）
+             t.person_charge_num,
+             IF(t.is_repeat_activate > 0,'是','否') as is_repeat_activate,
+             t.problem_type,
+             t1.work_order_id,
+             t1.summary,
+             t1.issue_type_cname,
+             t1.task_assign_name,
+             t1.solve_time,
+             IF(t1.task_assign_name is not null,t2.org_name_2,t3.org_name_2) as org_name_2,
+             t1.ones_close_time,
+             t1.ones_close_user,
+             case when t.close_name = '技术支持' and t.close_time is not null then 1 else 0 end as is_te_autonomous
+      from 
+           (select t1.ticket_id,
+                   t1.memo,
+                   t1.case_status,
+                   t1.case_origin_code,
+                   t1.close_name,
+                   t1.created_time,
+                   t1.project_code,
+                   t1.owner_name,
+                   t1.duty_type,
+                   t1.first_category,
+                   t1.second_category,
+                   t1.third_category,
+                   t1.first_category as first_class,
+                   t1.second_class,
+                   t1.third_class,
+                   t1.problem_type,
+                   t2.respond_user,
+                   t2.respond_time,
+                   t2.close_user,
+                   t2.close_time,
+                   t2.to_rb_time,               
+                   unix_timestamp(t2.respond_time) - unix_timestamp(t1.created_time) as create_respond_seconds,
+                   unix_timestamp(t2.close_time) - unix_timestamp(t1.created_time)   as create_close_seconds,
+                   IF(t3.person_charge_num is null,0,t3.person_charge_num) + IF(t4.person_charge_num is null,0,t4.person_charge_num) as person_charge_num,
+                   IF(t5.is_repeat_activate is null,0,t5.is_repeat_activate) + IF(t6.is_repeat_activate is null,0,t6.is_repeat_activate) as is_repeat_activate
+            from ${dwd_dbname}.dwd_ones_work_order_info_df t1
+                     --工单响应关闭信息
+                     left join
+                 (select ticket_id,
+                         max(case when t.rk = 1 and new_change_value = '已响应' then modify_user end)  respond_user,
+                         max(case when t.rk = 1 and new_change_value = '已响应' then updated_time end) respond_time,
+                         max(case when t.rk = 1 and new_change_value = '已关闭' then modify_user end)  close_user,
+                         max(case when t.rk = 1 and new_change_value = '已关闭' then updated_time end) close_time,
+                         min(case when new_change_value = '转研发' then updated_time end) to_rb_time
+                  from (select ticket_id,
+                               modify_user,
+                               updated_time,
+                               old_change_value,
+                               new_change_value,
+                               ROW_NUMBER() over (partition by ticket_id,new_change_value order by updated_time desc) rk
+                        from ${dwd_dbname}.dwd_ones_work_order_change_record_df
+                        where 1 = 1
+                          and d = DATE_ADD(CURRENT_DATE(), -1) 
+                          and order_change_type = '案列状态'
+                          ORDER by ticket_id,updated_time) t
+                  group by ticket_id) t2 on t2.ticket_id = t1.ticket_id
+                     --工单流转节点数量
+                     left join
+                 (select ticket_id,COUNT(DISTINCT modify_user) as person_charge_num
+                  from ${dwd_dbname}.dwd_ones_work_order_change_record_df
+                  where 1 = 1
+                    and d = DATE_ADD(CURRENT_DATE(), -1)
+                    and order_change_type = '案列状态'
+                  GROUP BY ticket_id) t3 on t3.ticket_id = t1.ticket_id
+                     --ones工单流转节点数量
+                     left join
+                 (select t.field_value,
+                         COUNT(DISTINCT t.person) as person_charge_num
+                    from (select v.task_uuid,
+                                 v.field_value,
+                                 c.task_process_user as person
+                          from ${dwd_dbname}.dwd_ones_task_field_value_info_ful v
+                          left join ${dwd_dbname}.dwd_one_task_process_change_info_his c
+                          on v.task_uuid = c.task_uuid
+                          where 1 = 1 and v.field_uuid = 'S993wZTA' and c.task_process_field = 'field005' and v.status = '1'
+                          UNION ALL 
+                          select v.task_uuid,
+                                 v.field_value,
+                                 c.old_task_field_value as person
+                          from ${dwd_dbname}.dwd_ones_task_field_value_info_ful v
+                          left join ${dwd_dbname}.dwd_one_task_process_change_info_his c
+                          on v.task_uuid = c.task_uuid
+                          where 1 = 1 and v.field_uuid = 'S993wZTA' and c.task_process_field = 'field004' and v.status = '1'
+                          UNION ALL 
+                          select v.task_uuid,
+                                 v.field_value,
+                                 c.new_task_field_value as person
+                          from ${dwd_dbname}.dwd_ones_task_field_value_info_ful v
+                          left join ${dwd_dbname}.dwd_one_task_process_change_info_his c
+                          on v.task_uuid = c.task_uuid
+                          where 1 = 1 and v.field_uuid = 'S993wZTA' and c.task_process_field = 'field004' and v.status = '1' ) t 
+                  GROUP BY t.field_value) t4 on t4.field_value = t1.ticket_id
+                     --工单是否二次激活
+                     left join
+                 (select ticket_id,
+                         1 as is_repeat_activate
+                  from ${dwd_dbname}.dwd_ones_work_order_change_record_df
+                  where 1 = 1
+                    and d = DATE_ADD(CURRENT_DATE(), -1)
+                    and order_change_type = '案列状态' and old_change_value = '已关闭'
+                  GROUP BY ticket_id) t5 on t5.ticket_id = t1.ticket_id
+                     --ones工单是否二次激活
+                     left join
+                 (select v.task_uuid,
+                         v.field_value,
+                         1 as is_repeat_activate
+                  from ${dwd_dbname}.dwd_ones_task_field_value_info_ful v
+                  left join ${dwd_dbname}.dwd_one_task_process_change_info_his c
+                  on v.task_uuid = c.task_uuid
+                  where 1 = 1 
+                    and v.field_uuid = 'S993wZTA' and c.task_process_field = 'field005' and v.status = '1' and c.old_task_field_value = '已关闭'
+                  GROUP BY v.task_uuid,v.field_value) t6 on t6.field_value = t1.ticket_id
+            where 1 = 1
+              and t1.d = DATE_ADD(CURRENT_DATE(), -1)
+              and t1.project_code is not null
+              and t1.work_order_status != '已驳回' --此次场景分析，排除掉“已驳回”工单
+              and lower(t1.project_code) not regexp 'test|tese') t
+--项目所属产品线
+               left join
+           (SELECT project_code,
+                   project_name,
+                   project_attr_ft as belongto_ft,
+                   project_operation_state_group,
+                   project_product_name as product_name,
+                   project_current_version as current_version
+            FROM ${dwd_dbname}.dwd_share_project_base_info_df v
+            where v.d = DATE_ADD(CURRENT_DATE(), -1) and v.is_filter_project='1')tpf on tpf.project_code = t.project_code
+               --工单对应的ones信息
+               left join
+           (select t2.field_value as work_order_id,
+                   t1.summary,
+                   *t1. as first_class,-- 一级分类
+                   *t1. as second_class,-- 二级分类
+                   *t1. as third_class,-- 三级分类
+                   ty.issue_type_cname,
+                   --tu.user_name as task_assign_name
+                   tt.user_name as task_assign_name,
+                   tt.solve_time,
+                   tt.ones_close_time,
+                   tt.ones_close_user
+            from ${dwd_dbname}.dwd_ones_task_info_ful t1
+                     inner join ${dwd_dbname}.dwd_ones_task_field_value_info_ful t2
+                     on t2.task_uuid = t1.uuid and t2.field_uuid = 'S993wZTA' and t2.field_value is not null --工单号属性:field_uuid ='S993wZTA'
+                     left join ${dim_dbname}.dim_ones_issue_type ty
+                     on ty.uuid = case when t1.sub_issue_type_uuid is null or t1.sub_issue_type_uuid = '' then t1.issue_type_uuid else t1.sub_issue_type_uuid end
+                     --缺陷工单匹配中间解决者
+                     left join 
+                     (
+                     select 
+                     pc.task_uuid,
+                     max(case when pc.new_task_field_value = '已修复' OR pc.new_task_field_value = '非Bug' OR pc.new_task_field_value = '无法重现' OR pc.new_task_field_value = '重复Bug' then task_process_user end)  user_name,
+                     max(case when pc.new_task_field_value = '已修复' OR pc.new_task_field_value = '非Bug' OR pc.new_task_field_value = '无法重现' OR pc.new_task_field_value = '重复Bug' then task_process_time end)  solve_time,
+                     max(case when pc.new_task_field_value = '已关闭' OR pc.new_task_field_value = '已完成' then task_process_time end)  ones_close_time,
+                     max(case when pc.new_task_field_value = '已关闭' OR pc.new_task_field_value = '已完成' then task_process_user end)  ones_close_user
+                     from ${dwd_dbname}.dwd_one_task_process_change_info_his pc 
+                     where pc.task_process_field = 'field005' 
+                     GROUP BY pc.task_uuid
+                     )tt on tt.task_uuid = t1.uuid
+           ) t1 on t1.work_order_id = t.ticket_id
+               --成员关联钉钉组织架构
+               left join 
+           (select DISTINCT mi.emp_name,
+                            li.org_id_2,
+                            li.org_name_2
+            from (select *,
+                         row_number()over(PARTITION by teg.emp_id order by teg.org_id)rn
+                  from ${dim_dbname}.dim_dtk_emp_org_mapping_info teg
+                  where teg.org_company_name='上海快仓智能科技有限公司')mi
+                  left join ${dim_dbname}.dim_dtk_org_level_info li
+                  on mi.org_id = li.org_id
+                  where li.org_company_name = '上海快仓智能科技有限公司' and mi.rn = 1 
+            ) t2 on t1.task_assign_name = t2.emp_name 
+               --成员关联钉钉组织架构
+               left join 
+           (select DISTINCT mi.emp_name,
+                            li.org_id_2,
+                            li.org_name_2
+            from (select *,
+                         row_number()over(PARTITION by teg.emp_id order by teg.org_id)rn
+                   from ${dim_dbname}.dim_dtk_emp_org_mapping_info teg
+                   where teg.org_company_name='上海快仓智能科技有限公司')mi
+                   left join ${dim_dbname}.dim_dtk_org_level_info li
+                   on mi.org_id = li.org_id
+                   where li.org_company_name = '上海快仓智能科技有限公司' and mi.rn = 1 
+            ) t3 on t1.ones_close_user = t3.emp_name
+      where 1 = 1
+     ) t on t.ft_name = ftw.ft_name ;

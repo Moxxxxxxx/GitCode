@@ -1,0 +1,7 @@
+SELECT
+DATE_FORMAT(cc.done_date,'%H:00:00'),
+sum(CASE WHEN cc.done_date >= '2021-06-28 23:00:00' AND cc.done_date <= DATE_ADD('2021-06-28 23:00:00',INTERVAL 60*8 MINUTE) THEN 1 ELSE 0 END) as 'order'
+FROM evo_wes_cyclecount.cycle_count cc
+WHERE cc.state = 'DONE' AND cc.done_date > '2021-06-28 23:00:00' AND cc.done_date <= DATE_ADD('2021-06-28 23:00:00',INTERVAL 60*8 MINUTE)
+GROUP BY DATE_FORMAT(cc.done_date,'%H')
+ORDER BY cc.done_date
