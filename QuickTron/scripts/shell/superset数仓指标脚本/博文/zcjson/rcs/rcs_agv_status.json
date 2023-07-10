@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,agv_id,battery_temperature,bucket_id,direction,exception_code,gmt_create,gmt_create_user,gmt_modified,gmt_modified_user,loading_bucket,power,speed,warehouse_id,waypoint_id,x,y,bucket_heading,create_date,create_user,gyro_temperature,layerelectric_temperature,leftelectric_temperature,liftelectric_temperature,liftup_number,load_mileage,modified_date,modified_user,no_load_mileage,over_all_mileage,point_code,rightelectric_temperature,is_barrier,is_return_home,disk_space_percent,agv_mac_address,ap_mac_address,ap_service_id,ap_radio_id,signal_strength,'A51264' as project_code from rcs_agv_status where modified_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00')"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_rcs"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","agv_id","battery_temperature","bucket_id","direction","exception_code","gmt_create","gmt_create_user","gmt_modified","gmt_modified_user","loading_bucket","power","speed","warehouse_id","waypoint_id","x","y","bucket_heading","create_date","create_user","gyro_temperature","layerelectric_temperature","leftelectric_temperature","liftelectric_temperature","liftup_number","load_mileage","modified_date","modified_user","no_load_mileage","over_all_mileage","point_code","rightelectric_temperature","is_barrier","is_return_home","disk_space_percent","agv_mac_address","ap_mac_address","ap_service_id","ap_radio_id","signal_strength","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_rcs", 
+                                "table": [
+                                		"agv_pd_status"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

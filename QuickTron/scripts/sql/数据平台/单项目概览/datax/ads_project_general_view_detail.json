@@ -1,0 +1,41 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+								"querySql":["select project_code_class,project_code,project_sale_code,project_name,project_info,project_product_name,project_type,project_dispaly_state,project_dispaly_state_group,project_ft,project_priority,project_current_version,sales_area_director,project_area,pm_name,spm_name,sap_counselor,sales_person,pre_sales_consultant,amount,contract_signed_year,cast(contract_signed_date as date),deliver_goods_achieving_rate,deliver_goods_desc,cast(pre_project_approval_time as date),cast(project_handover_end_time as date),cast(expect_online_date as date),cast(online_date as date),cast(online_overdue_days as int),online_process_month,cast(online_process_month_begin as date),is_online,cast(sap_entry_date as date),cast(online_times as int),cast(no_online_times as int),cast(expect_final_inspection_date as date),cast(final_inspection_date as date),cast(final_inspection_overdue_days as int),final_inspection_process_month,cast(final_inspection_process_month_begin as date),is_final_inspection,final_inspection_times,no_final_inspection_times,project_stage,project_progress_stage,project_gm,complain_num,zeroweek_work_num,oneweek_work_num,twoweek_work_num,threeweek_work_num,fourweek_work_num,pe_members,charger_num,station_num,agv_num from ads.ads_project_general_view_detail"],
+                                "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads?mapreduce.job.queuename=hive"]
+                            }
+                        ]
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["project_code_class","project_code","project_sale_code","project_name","project_info","project_product_name","project_type","project_dispaly_state","project_dispaly_state_group","project_ft","project_priority","project_current_version","sales_area_director","project_area","pm_name","spm_name","sap_counselor","sales_person","pre_sales_consultant","amount","contract_signed_year","contract_signed_date","deliver_goods_achieving_rate","deliver_goods_desc","pre_project_approval_time","project_handover_end_time","expect_online_date","online_date","online_overdue_days","online_process_month","online_process_month_begin","is_online","sap_entry_date","online_times","no_online_times","expect_final_inspection_date","final_inspection_date","final_inspection_overdue_days","final_inspection_process_month","final_inspection_process_month_begin","is_final_inspection","final_inspection_times","no_final_inspection_times","project_stage","project_progress_stage","project_gm","complain_num","zeroweek_work_num","oneweek_work_num","twoweek_work_num","threeweek_work_num","fourweek_work_num","pe_members","charger_num","station_num","agv_num"], 
+						"preSql": ["truncate table ads_project_general_view_detail"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/ads", 
+                                "table": ["ads_project_general_view_detail"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

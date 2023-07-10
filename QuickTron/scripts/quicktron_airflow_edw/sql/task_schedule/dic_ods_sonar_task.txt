@@ -1,0 +1,10 @@
+ods_qkt_sonar_components_di
+ods_qkt_sonar_events_df
+ods_qkt_sonar_issues_di
+ods_qkt_sonar_live_measures_di
+ods_qkt_sonar_metrics_df
+ods_qkt_sonar_project_branches_df
+ods_qkt_sonar_project_df
+ods_qkt_sonar_project_measures_df
+ods_qkt_sonar_rules_df
+ods_qkt_sonar_users_df

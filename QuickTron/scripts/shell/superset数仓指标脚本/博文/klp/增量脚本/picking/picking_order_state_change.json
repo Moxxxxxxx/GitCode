@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,picking_order_id,tenant_id,state,version,zone_id,warehouse_id,delete_flag,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,'A51118' as project_code from picking_order_state_change where last_updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00');"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_picking"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",  
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","picking_order_id","tenant_id","state","version","zone_id","warehouse_id","delete_flag","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_wes_picking", 
+                                "table": [
+                                		"picking_order_state_change"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection",  
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

@@ -1,0 +1,5 @@
+dws_report_user_login_daycount
+dws_monitor_platform_auto_work_order
+dws_report_dashboard_daycount
+dws_report_slice_daycount
+dws_report_sql_edit_info_daycount

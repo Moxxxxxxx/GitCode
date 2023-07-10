@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,zone_code,owner_code,warehouse_id,tally_type,max_bucket_slot_num,bucket_type_code,bucket_slot_type_code,slot_used_capacity,source_slot_usage,source_slot_capacity_usage,tally_work_type,state,complete_state,station_code,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,' A51246' as project_code from tally_apply where last_updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00')"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_internal"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","zone_code","owner_code","warehouse_id","tally_type","max_bucket_slot_num","bucket_type_code","bucket_slot_type_code","slot_used_capacity","source_slot_usage","source_slot_capacity_usage","tally_work_type","state","complete_state","station_code","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://116.228.219.180:13306/evo_wes_internal", 
+                                "table": [
+                                		"tally_apply"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "kc87654321!", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "quicktron", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

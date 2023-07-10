@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,agv_code,warehouse_id,zone_code,zone_collection,agv_type_id,agv_frame_code,drive_unit_version,ip,dsp_version,battery_version,radar_version,camera_version,os,command_version,product_version,dbox_version,iot_version,disk_space_percent,state,created_time,created_user,created_app,last_updated_time,last_updated_user,last_updated_app,bucket_code,'A51118' as project_code from basic_agv;"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_rcs"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",   
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","agv_code","warehouse_id","zone_code","zone_collection","agv_type_id","agv_frame_code","drive_unit_version","ip","dsp_version","battery_version","radar_version","camera_version","os","command_version","product_version","dbox_version","iot_version","disk_space_percent","state","created_time","created_user","created_app","last_updated_time","last_updated_user","last_updated_app","bucket_code","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_rcs", 
+                                "table": [
+                                		"basic_agv"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,agv_code,barcode_decoded,barcode_in_map,bias_type,date_created,direction,job_id,point_code,point_x,point_y,'A51118' as project_code from rcs_scan_code_record ;"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_rcs"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",   						
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","agv_code","barcode_decoded","barcode_in_map","bias_type","date_created","direction","job_id","point_code","point_x","point_y","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_rcs", 
+                                "table": [
+                                		"rcs_scan_code_record"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

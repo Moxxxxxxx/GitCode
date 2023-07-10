@@ -1,0 +1,27 @@
+# 搬运作业单统计（页面-历史数据）
+qt_smartreport.qt_transport_order_link_next_step1_his
+qt_smartreport.qt_transport_order_link_next_step2_his
+qt_smartreport.qt_transport_order_link_detail_stat_his
+qt_smartreport.qt_transport_order_detail_stat_his
+qt_smartreport.qt_transport_upstream_order_detail_stat_his
+
+
+# 机器人运行（页面-历史数据）
+qt_smartreport.qt_day_robot_state_detail_duration_his
+qt_smartreport.qt_hour_robot_state_detail_duration_his
+qt_smartreport.qt_hour_robot_state_duration_stat_his
+
+
+# 系统故障（页面-历史数据) 
+qt_smartreport.qt_day_sys_error_detail_his
+qt_smartreport.qt_day_sys_end_error_detail_his
+qt_smartreport.qt_hour_sys_error_time_detail_his
+qt_smartreport.qt_hour_all_sys_error_time_detail_his
+
+
+# 机器人故障（页面-历史数据) 
+qt_smartreport.qt_day_robot_error_detail_his
+qt_smartreport.qt_hour_robot_error_time_detail_his
+qt_smartreport.qt_day_robot_end_error_detail_his
+
+

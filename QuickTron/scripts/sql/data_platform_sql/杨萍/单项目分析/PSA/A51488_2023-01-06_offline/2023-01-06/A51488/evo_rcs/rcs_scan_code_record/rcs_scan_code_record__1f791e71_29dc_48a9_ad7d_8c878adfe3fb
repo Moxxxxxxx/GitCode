@@ -1,0 +1,1 @@
+id,agv_code,bias_type,point_x,point_y,direction,point_code,barcode_decoded,barcode_in_map,job_id,date_created,project_code=Long-String-String-Long-Long-Long-String-Long-Long-String-Date=bigint(16)-varchar(50)-varchar(255)-int(11)-int(11)-int(11)-varchar(255)-int(11)-int(11)-varchar(255)-datetime

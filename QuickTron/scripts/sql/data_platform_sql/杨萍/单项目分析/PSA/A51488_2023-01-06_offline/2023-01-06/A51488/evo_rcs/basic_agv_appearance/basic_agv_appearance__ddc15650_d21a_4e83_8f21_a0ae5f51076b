@@ -1,0 +1,3 @@
+id,agv_appearance_code,warehouse_id,state,created_time,created_user,created_app,last_updated_time,last_updated_user,last_updated_app,project_code=Long-String-Long-String-Date-String-String-Date-String-String=bigint(20)-varchar(20)-bigint(20)-varchar(128)-datetime(3)-varchar(128)-varchar(128)-datetime(3)-varchar(128)-varchar(128)
+1,ZQ,1,effective,2019-07-26 12:48:52.984,EVO_BASIC,EVO_BASIC,2019-11-21 16:33:35.983,EVO_BASIC,EVO_BASIC,A51488
+2,XW,1,effective,2019-09-19 15:15:27.272,EVO_BASIC,EVO_BASIC,2019-11-21 16:33:35.983,EVO_BASIC,EVO_BASIC,A51488

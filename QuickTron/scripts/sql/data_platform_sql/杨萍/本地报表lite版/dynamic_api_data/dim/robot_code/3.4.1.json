@@ -1,0 +1,13 @@
+{
+  "subject_name": "dim",
+  "api_name": "robot_code",
+  "api_desc": "机器人编码",
+  "api_version": "3.4.1",
+  "jinja_content": "select distinct robot_code  from phoenix_basic.basic_robot",
+  "inner_validate": [],
+  "custom_validate": [],
+  "target_desc": {
+    "zh": [],
+    "en": []
+  }
+}

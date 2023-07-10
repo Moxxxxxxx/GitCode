@@ -1,0 +1,85 @@
+{
+  "subject_name": "project_overview",
+  "api_name": "device_info",
+  "api_desc": "设备信息",
+  "api_version": "3.4.1",
+  "jinja_content": "select\nROUND(max(warehouse_area), 0) as warehouse_area,\nmax(robot_num) as robot_num,\nmax(charger_num) as charger_num,\nnull as elevator_num,\nnull as unloader_num,\nnull as door_num,\nnull as other_device_num\nfrom\n(\n    select\n    (map_length / 1000) * (map_width / 1000) as warehouse_area,\n    null as robot_num,\n    null as charger_num\n    from phoenix_basic.basic_map\n    where map_state\u003d\u0027release\u0027\n\n    union all\n    select\n    null as warehouse_area,\n    count(distinct robot_code) as robot_num,\n    null as charger_num\n    from phoenix_basic.basic_robot\n    where usage_state\u003d\u0027using\u0027\n\n    union all\n    select\n    null as warehouse_area,\n    null as robot_num,\n    count(distinct bc.charger_code) as charger_num\n    from phoenix_basic.basic_charger bc\n    inner join phoenix_basic.basic_map bm on bm.map_code\u003dbc.map_code and bm.map_state\u003d\u0027release\u0027\n) t\n",
+  "inner_validate": [],
+  "custom_validate": [],
+  "target_desc": {
+    "zh": [
+      {
+        "target_key": "warehouse_area",
+        "name": "仓库面积",
+        "desc": "仓库的面积"
+      },
+      {
+        "target_key": "robot_num",
+        "name": "机器人数量",
+        "desc": "机器人的数量"
+      },
+      {
+        "target_key": "charger_num",
+        "name": "充电桩数量",
+        "desc": "充电桩的数量"
+      },
+      {
+        "target_key": "elevator_num",
+        "name": "电梯数量",
+        "desc": "电梯的数量"
+      },
+      {
+        "target_key": "unloader_num",
+        "name": "卸货机数量",
+        "desc": "卸货机的数量"
+      },
+      {
+        "target_key": "door_num",
+        "name": "门的数量",
+        "desc": "门的数量"
+      },
+      {
+        "target_key": "other_device_num",
+        "name": "其他的设备的数量",
+        "desc": "其他的设备的数量"
+      }
+    ],
+    "en": [
+      {
+        "target_key": "warehouse_area",
+        "name": "The area of the warehouse",
+        "desc": "The area of the warehouse"
+      },
+      {
+        "target_key": "robot_num",
+        "name": "The number of robots",
+        "desc": "The number of robots"
+      },
+      {
+        "target_key": "charger_num",
+        "name": "The number of chargers",
+        "desc": "The number of chargers"
+      },
+      {
+        "target_key": "elevator_num",
+        "name": "The number of elevators",
+        "desc": "The number of elevators"
+      },
+      {
+        "target_key": "unloader_num",
+        "name": "The number of unloaders",
+        "desc": "The number of unloaders"
+      },
+      {
+        "target_key": "door_num",
+        "name": "The number of doors",
+        "desc": "The number of doors"
+      },
+      {
+        "target_key": "other_device_num",
+        "name": "The number of other devices",
+        "desc": "The number of other devices"
+      }
+    ]
+  }
+}

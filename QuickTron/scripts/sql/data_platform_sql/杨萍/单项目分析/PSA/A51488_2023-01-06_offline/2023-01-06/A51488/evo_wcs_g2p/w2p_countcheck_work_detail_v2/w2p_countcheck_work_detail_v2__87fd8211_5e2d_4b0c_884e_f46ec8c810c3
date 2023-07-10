@@ -1,0 +1,1 @@
+id,warehouse_id,zone_code,work_id,source_detail_id,level1_container_code,state,created_app,created_date,updated_app,updated_date,project_code=Long-Long-String-String-Long-String-String-String-Date-String-Date=bigint(16)-bigint(16)-varchar(64)-varchar(64)-bigint(16)-varchar(64)-varchar(64)-varchar(64)-datetime(3)-varchar(64)-datetime(3)

@@ -1,0 +1,41 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+								"querySql":["select project_code,total,fail_time,succes_time,avg_recover_duration from ads_single_project_synthesis_target where cur_date = '${pre1_date}'"],
+                                "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads"]
+                            }
+                        ]
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["project_code","total","fail_time","succes_time","avg_recover_duration"], 
+						"preSql": ["truncate table ads_project_view_manual_recovery_count"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_manual_recovery_count"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

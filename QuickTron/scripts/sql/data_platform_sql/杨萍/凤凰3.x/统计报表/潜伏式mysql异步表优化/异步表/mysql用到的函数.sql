@@ -1,0 +1,12 @@
+CURRENT_TIMESTAMP
+DATE()
+COALESCE()
+MIN()
+MAX()
+LEAST()
+GREATEST()
+nullif()
+CAST()
+group_concat()
+date_format()
+ROUND()

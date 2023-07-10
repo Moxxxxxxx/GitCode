@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,station_code,state,warehouse_id,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,' A51246' as project_code from tally_shelf_scheduling where last_updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00')"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_internal"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","station_code","state","warehouse_id","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://116.228.219.180:13306/evo_wes_internal", 
+                                "table": [
+                                		"tally_shelf_scheduling"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "kc87654321!", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "quicktron", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

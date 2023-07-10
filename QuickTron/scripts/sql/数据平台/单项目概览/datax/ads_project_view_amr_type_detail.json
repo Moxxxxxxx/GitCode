@@ -1,0 +1,41 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+								"querySql":["select agv_type_code,agv_type_name,project_code,agv_num,offline_maintain_num from ads_single_project_agv_type_info where cur_date = '${pre1_date}' and agv_type_code != 'all'"],
+                                "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads"]
+                            }
+                        ]
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["amr_type","amr_type_name","project_code","total_num","unlinefix"], 
+						"preSql": ["truncate table ads_project_view_amr_type_detail"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_amr_type_detail"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

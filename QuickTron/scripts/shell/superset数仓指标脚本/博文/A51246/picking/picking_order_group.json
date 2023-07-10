@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,group_code,unique_assist_key,picking_group_type,external_id,tenant_id,state,printing_times,udf1,udf2,udf3,udf4,udf5,version,warehouse_id,station_id,station_code,delete_flag,create_flag,start_date,deliver_date,priority_type,priority_value,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,'A51246' as project_code from picking_order_group;"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_picking"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root", 
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","group_code","unique_assist_key","picking_group_type","external_id","tenant_id","state","printing_times","udf1","udf2","udf3","udf4","udf5","version","warehouse_id","station_id","station_code","delete_flag","create_flag","start_date","deliver_date","priority_type","priority_value","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_wes_picking", 
+                                "table": [
+                                		"picking_order_group"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection",  
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

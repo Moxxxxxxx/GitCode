@@ -1,0 +1,48 @@
+SET @begin_time = DATE_ADD(DATE_FORMAT(sysdate(),'%Y-%m-%d 00:00:00'),INTERVAL -1 DAY); -- 开始时间
+SET @line_num = 24; -- 默认24小时的时间段
+SET @interval_time = 60; -- 间隔时间 单位：分钟
+
+SELECT tt.theDayStartofhour,
+       tt.agv_code,
+       tt.free_time,
+       CONCAT(CAST(tt.free_time/36 AS DECIMAL(10,2)),'%') as free_rate  -- /60*60*100
+FROM
+(
+SELECT tmp.theDayStartofhour,
+       tmp1.agv_code,
+       SUM(CASE WHEN tmp1.updated_date >= tmp.theDayStartofhour AND tmp2.updated_date <= tmp.theDayEndofhour THEN TIMESTAMPDIFF(SECOND,tmp1.updated_date,tmp2.updated_date) 
+                WHEN tmp1.updated_date >= tmp.theDayStartofhour AND tmp1.updated_date <= tmp.theDayEndofhour AND tmp2.updated_date > tmp.theDayEndofhour THEN TIMESTAMPDIFF(SECOND,tmp1.updated_date,tmp.theDayEndofhour) 
+                WHEN tmp1.updated_date < tmp.theDayStartofhour AND tmp2.updated_date >= tmp.theDayStartofhour AND tmp2.updated_date <= tmp.theDayEndofhour THEN TIMESTAMPDIFF(SECOND,tmp.theDayStartofhour,tmp2.updated_date) 
+                WHEN tmp1.updated_date < tmp.theDayStartofhour AND tmp2.updated_date > tmp.theDayEndofhour THEN TIMESTAMPDIFF(SECOND,tmp.theDayStartofhour,tmp.theDayEndofhour)
+                ELSE 0 END) as free_time
+FROM 
+(
+SELECT @i:=DATE_ADD(@i,INTERVAL 1 HOUR) as theDayStartofhour,DATE_ADD(@i,INTERVAL 3599 SECOND) as theDayEndofhour
+FROM information_schema.COLUMNS,(select @i:= DATE_ADD(@begin_time,INTERVAL -1 HOUR)) tmp 
+WHERE @i < DATE_ADD(DATE_ADD(@begin_time,INTERVAL 1 DAY),INTERVAL -1 HOUR)  
+)tmp
+JOIN
+(
+SELECT c.agv_code,c.job_id,c.updated_date
+FROM evo_wcs_g2p.job_state_change c
+WHERE c.state = 'GO_TARGET' AND c.job_type = 'G2P_BUCKET_MOVE' AND c.project_code = 'A51118' 
+GROUP BY c.job_id
+)tmp1
+LEFT JOIN
+(
+SELECT c.agv_code,c.job_id,c.updated_date
+FROM evo_wcs_g2p.job_state_change c
+WHERE c.state = 'DONE' AND c.job_type = 'G2P_BUCKET_MOVE' AND c.project_code = 'A51118' 
+GROUP BY c.job_id
+)tmp2
+ON tmp1.job_id =tmp2.job_id
+WHERE ((tmp1.updated_date >= @begin_time AND tmp1.updated_date < DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE))
+     OR(tmp1.updated_date < @begin_time AND tmp2.updated_date > @begin_time)
+     OR(tmp1.updated_date < @begin_time AND tmp2.updated_date >= @begin_time AND tmp2.updated_date < DATE_ADD(@begin_time,INTERVAL @interval_time*@line_num MINUTE)))
+GROUP BY tmp.theDayStartofhour,tmp1.agv_code
+)tt
+GROUP BY tt.theDayStartofhour,tt.agv_code
+
+
+
+

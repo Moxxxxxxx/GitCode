@@ -1,0 +1,98 @@
+#!/bin/bash
+dbname=ods
+#hive=/opt/module/hive-3.1.2/scripts/hive
+hive=/opt/module/hive-3.1.2/bin/hive
+
+
+# 如果是输入的日期按照取输入日期；如果没输入日期取当前时间的前一天
+if [ -n "$1" ] ;then
+    pre1_date=$1
+else 
+    pre1_date=`date -d "-1 day" +%F`
+fi
+
+if [ -n "$1" ] ;then
+    pre2_date=`date -d "-1 day $1" +%F`
+else
+    pre2_date=`date -d "-2 day" +%F`
+fi
+
+echo "##############################################hive:{start executor dwd}####################################################################"
+
+
+
+init_sql="
+set hive.execution.engine=mr;
+set mapreduce.job.queuename=hive;
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.input.format=org.apache.hadoop.hive.ql.io.CombineHiveInputFormat;
+set hive.exec.max.dynamic.partitions=1000;
+set hive.exec.max.dynamic.partitions.pernode=500;
+
+
+use $dbname;
+insert overwrite table dwd.dwd_picking_order_state_change_info partition(d,pt)
+select 
+id,
+picking_order_id,
+tenant_id,
+state as order_state,
+version,
+zone_id,
+warehouse_id,
+delete_flag,
+created_date as order_created_time,
+created_user as order_created_user,
+created_app as order_created_app,
+last_updated_date as order_updated_time,
+last_updated_user as order_updated_user,
+last_updated_app as order_updated_app,
+project_code,
+d,
+project_code as pt
+from 
+ods_qkt_picking_order_state_change 
+;
+"
+sql="
+set hive.execution.engine=mr;
+set mapreduce.job.queuename=hive;
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.input.format=org.apache.hadoop.hive.ql.io.CombineHiveInputFormat;
+set hive.exec.max.dynamic.partitions=1000;
+set hive.exec.max.dynamic.partitions.pernode=500;
+
+
+use $dbname;
+insert overwrite table dwd.dwd_picking_order_state_change_info partition(d='$pre1_date',pt)
+select 
+id,
+picking_order_id,
+tenant_id,
+state as order_state,
+version,
+zone_id,
+warehouse_id,
+delete_flag,
+created_date as order_created_time,
+created_user as order_created_user,
+created_app as order_created_app,
+last_updated_date as order_updated_time,
+last_updated_user as order_updated_user,
+last_updated_app as order_updated_app,
+project_code,
+project_code as pt
+from 
+ods_qkt_picking_order_state_change
+where d='$pre1_date'
+;
+"
+
+
+printf "##############################################start-executor-sql####################################################################\n$sql\n##############################################end-executor-sql####################################################################"
+
+#$hive $hive_username $hive_passwd -e "$sql"
+$hive -e "$sql"
+
+echo "##############################################hive:{end executor dwd}####################################################################"
+

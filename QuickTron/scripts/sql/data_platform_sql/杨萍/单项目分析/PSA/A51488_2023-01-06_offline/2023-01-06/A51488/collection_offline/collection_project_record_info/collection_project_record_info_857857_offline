@@ -1,0 +1,2 @@
+project_code,project_name,project_product_type,project_version,is_nonetwork=String-String-String-String-String=varchar(128)-varchar(128)-varchar(128)-varchar(128)-char(2)
+A51488,psa项目,智能搬运,2.9.1,0

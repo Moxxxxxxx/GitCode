@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,warehouse_id,slot_type_code,apply_type,layer_count,slot_count,height,width,depth,weight,view_distinguish,group_layer_count,group_slot_count,guide_way,reflect_distance,reflect_insider_distance,state,created_time,created_user,created_app,last_updated_time,last_updated_user,last_updated_app,'A51246' as project_code from basic_slot_type"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_basic"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","warehouse_id","slot_type_code","apply_type","layer_count","slot_count","height","width","depth","weight","view_distinguish","group_layer_count","group_slot_count","guide_way","reflect_distance","reflect_insider_distance","state","created_time","created_user","created_app","last_updated_time","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_basic", 
+                                "table": [
+                                		"basic_slot_type"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

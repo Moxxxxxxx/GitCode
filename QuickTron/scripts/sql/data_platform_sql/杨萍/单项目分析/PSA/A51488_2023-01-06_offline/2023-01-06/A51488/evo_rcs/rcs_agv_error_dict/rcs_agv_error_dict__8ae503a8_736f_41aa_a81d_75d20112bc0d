@@ -1,0 +1,47 @@
+id,error_domain,error_type,error_code,content,error_level,solution,gmt_create,gmt_create_user,project_code=Long-String-String-String-String-String-String-Date-String=bigint(20)-varchar(255)-varchar(255)-varchar(255)-varchar(2047)-varchar(255)-varchar(2047)-datetime-varchar(255)
+1,注册上线异常,货架信息异常,RCS_RbtErr_BucketMismatch,"货架id不匹配:robot上报id为:[#],系统期望id为:[#]",error,检查小车载货架信息和任务货架信息,2022-06-21 13:55:53.0,RCS,A51488
+4,注册上线异常,基础数据缺失注册失败,RCS_OnlineErr_BasicRbtDataNotConfigured,小车没有基础数据导致注册失败,error,检查小车基础数据配置,2022-06-21 13:55:53.0,RCS,A51488
+5,注册上线异常,禁止点上线注册失败,RCS_OnlineErr_ForbiddenPointNotAllowed,小车当前在forbidden点禁止上线,error,将小车移动至非禁止点上线,2022-06-21 13:55:53.0,RCS,A51488
+6,注册上线异常,ROBOT未初始化成功注册失败,RCS_OnlineErr_RbtErrNotRecovered,当前Robot为故障状态禁止上线,error,小车下线，清除故障，再上线,2022-06-21 13:55:53.0,RCS,A51488
+7,注册上线异常,未申请到锁闭注册失败,RCS_OnlineErr_LockpointRequestFailed,小车申请不到当前锁闭点导致注册失败,error,检查小车当前点位状况,2022-06-21 13:55:53.0,RCS,A51488
+8,ROBOT异常,ROBOT温度异常,RCS_RbtErr_RbtTemperatureTooHigh,小车当前车辆温度过高,error,检测电池状况,2022-06-21 13:55:53.0,RCS,A51488
+9,ROBOT异常,ROBOT电流异常,RCS_RbtErr_RbtCurrentOverload,小车当前电流过载,error,检测电池状况,2022-06-21 13:55:53.0,RCS,A51488
+10,交通控制异常,路径规划异常,RCS_TrafficErr_PathPlanFailed,小车路径规划异常|起点:#|终点:#,error,检查地图连通性,2022-06-21 13:55:53.0,RCS,A51488
+11,交通控制异常,错误锁闭无法行走,RCS_TrafficErr_BlockedByErrorLockpoint,#点被#小车阻挡,warning,恢复故障小车清除故障锁闭,2022-06-21 13:55:53.0,RCS,A51488
+12,交通控制异常,人工锁闭无法行走,RCS_TrafficErr_BlockedByHumanLockpoint,#点被人工锁闭点锁住,warning,检查人工锁闭点情况判断是否释放人工锁闭,2022-06-21 13:55:53.0,RCS,A51488
+13,交通控制异常,锁闭点被占有无法行走,RCS_TrafficErr_BlockedByOtherRobot,#点的锁闭被#车占有无法行走,warning,通知管理员查看,2022-06-21 13:55:53.0,RCS,A51488
+14,交通控制异常,检测到碰撞无法行走,RCS_TrafficErr_CollisionDetected,当前点:#|阻塞点:#|阻塞robot:#|阻塞货架:#,warning,检查车辆尺寸配置,2022-06-21 13:55:53.0,RCS,A51488
+15,交通控制异常,移动指令未完成无法行走,RCS_CmdErr_CurrentMoveCmdNotFinished,小车已经下发的移动指令还未完成,warning,检查小车载货架信息和任务货架信息,2022-06-21 13:55:53.0,RCS,A51488
+16,交通控制异常,被异常货架阻挡,RCS_TrafficErr_BlockedByErrorBucket,当前点:#|阻塞货架:#,warning,通知管理员查看,2022-06-21 13:55:53.0,RCS,A51488
+17,交通控制异常,路径规划异常,RCS_TrafficErr_NoRotatePointOrSharedRotateDisabled,"未开启公共换向或未找到换向点:公共换向功能:#,换向点:#",error,检查目标点是否绑定换向点或系统是否开启公共换向功能,2022-06-21 13:55:53.0,RCS,A51488
+18,交通控制异常,缺少尺寸数据,RCS_TrafficErr_PartsLost,[小车尺寸丢失，小车类型: #][货架尺寸丢失，货架类型: #],warning,配置对应尺寸数据,2022-06-21 13:55:53.0,RCS,A51488
+19,交通控制异常,申请不到设备,RCS_TrafficErr_DeviceApplyFailed,申请设备交互失败，设备申请指令id : #,warning,等待设备反馈，重新上下线小车,2022-06-21 13:55:53.0,RCS,A51488
+20,交通控制异常,锁闭未初始化,RCS_TrafficErr_PointCalculateFailed,小车持有锁闭点 # 所以不再推点,warning,重新上下线小车,2022-06-21 13:55:53.0,RCS,A51488
+21,交通控制异常,等待移动完成,RCS_TrafficErr_WaitRbtFinishLineMove,小车持有直线锁闭 # 等待移动完成,warning,等待小车移动完成，或点击restore按钮,2022-06-21 13:55:53.0,RCS,A51488
+22,交通控制异常,等待小车旋转完成,RCS_TrafficErr_WaitRbtRotateFinish,小车未旋转完成,warning,等待小车旋转完成，或点击restore按钮,2022-06-21 13:55:53.0,RCS,A51488
+23,交通控制异常,区域锁闭无法行走,RCS_TrafficErr_BlockedByArea,#点被#区域阻挡,warning,等待释放区域,2022-06-21 13:55:53.0,RCS,A51488
+24,ROBOT异常,ROBOTDSP异常,RCS_RbtErr_DSP,ROBOT DSP异常,error,ROBOT DSP ERROR,2022-06-21 13:55:53.0,RCS,A51488
+25,ROBOT异常,ROBOT充电失败,RCS_RbtErr_ChargeFail,ROBOT充电失败,error,ROBOT充电失败,2022-06-21 13:55:53.0,RCS,A51488
+26,ROBOT下线,ROBOT掉线,RCS_RbtErr_Offline,ROBOT掉线,error,ROBOT掉线,2022-06-21 13:55:53.0,RCS,A51488
+27,ROBOT异常,ROBOT不在码点上,RCS_RbtErr_NotOnCode,ROBOT不在码点上,error,ROBOT NOT ON CODE,2022-06-21 13:55:53.0,RCS,A51488
+28,JOB执行异常,任务ID不一致,RCS_JobErr_JobIdNotSame,任务ID不一致,error,JOB ID NOT SAME,2022-06-21 13:55:53.0,RCS,A51488
+29,JOB执行异常,末端引导时，货架点位上没有货架,RCS_ActionErr_BucketNotInPositionWhenDoTerminalGuidance,末端引导时，货架点位上没有货架,error,BUCKET NOT IN POSITION WHEN TERMINAL GUIDANCE,2022-06-21 13:55:53.0,RCS,A51488
+30,JOB执行异常,末端引导时，货架属性未配置,RCS_ActionError_BucketTypeNotFound,末端引导时，货架属性未配置,error,BUCKET TYPE INFORMATION NOT CONFIG,2022-06-21 13:55:53.0,RCS,A51488
+31,货位锁闭异常,货位位置关系数据未生成,RCS_SlotLockErr_LackPositionRelation,缺失货位([#])位置关系数据,error,请检查并生成该货位位置关系数据,2022-06-21 13:55:53.0,RCS,A51488
+32,ROBOT异常,传感器检测到障碍物,RCS_RbtErr_Warning_DetectBarrier,车辆遇到障碍物,warning,请检查现场是否存在障碍物，如存在移除障碍物,2022-06-21 13:55:53.0,RCS,A51488
+33,ROBOT异常,DSP异常电量低,RCS_RbtErr_Warning_LowPower,小车电量低,warning,达到充电阈值后系统会自动调度小车进行充电，或者可以手动通过中控的“充电”功能手动下发充电任务,2022-06-21 13:55:53.0,RCS,A51488
+34,ROBOT异常,磁盘空间占用率过高,RCS_RbtErr_Warning_DiskSpaceFull,AGV磁盘可用空间过少，磁盘占用率达:#%，达到警告标准,warning,请及时磁盘垃圾文件,2022-06-21 13:55:53.0,RCS,A51488
+35,ROBOT异常,磁盘空间占用率超高,RCS_RbtErr_DiskSpaceFull,AGV磁盘可用空间过少，磁盘占用率达:#%，达到故障标准,error,请及时磁盘垃圾文件,2022-06-21 13:55:53.0,RCS,A51488
+36,任务下发异常,空满检测异常,RCS_JobErr_FullDetectFail,"Agv要去#取货,但是目标位置无载具",error,请人工检查处理,2022-06-21 13:55:53.0,RCS,A51488
+37,任务下发异常,空满检测异常,RCS_JobErr_EmptyDetectFail,"Agv要去#放货,但是目标位置已经存在载具",error,请人工检查处理,2022-06-21 13:55:53.0,RCS,A51488
+38,ROBOT异常,AGV电流异常,RCS_RbtErr_BatteryNotIncrement,在检测时间内，小车电量未增长,error,请检查小车电池状况，充电桩电源是否接通。,2020-07-08 18:30:57.0,RCS,A51488
+39,ROBOT异常,AGV温度异常,RCS_RbtErr_BatterytemperatureTooHigh,在充电时间内，小车电池温度过高,error,检测电池状况。,2020-07-08 18:30:57.0,RCS,A51488
+42,任务下发异常,货架ID不存在,RCS_JobErr_BucketID_Missing,货架ID不在数据库存在,error,货架ID不在数据库存在,2020-07-08 18:30:57.0,RCS,A51488
+43,注册上线异常,辅助点上线注册失败,RCS_OnlineErr_AssistPointNotAllowed,小车当前在assist点禁止上线,error,将小车移动至非辅助点上线,2021-10-28 18:30:57.0,RCS,A51488
+44,注册上线异常,"小车上线注册失败,没有找到合适的注册点",RCS_OnlineErr_RbtErrNotFoundPoint,小车移动到码点附近上线,error,小车移动到码点附近上线,2021-11-26 18:30:57.0,RCS,A51488
+45,注册上线异常,"小车上线注册失败,使用上一次指令的目标点",RCS_OnlineErr_RbtErrNotFoundPointUseLast,小车移动到码点附近上线,error,小车移动到码点附近上线,2021-11-26 18:30:57.0,RCS,A51488
+46,申请货位锁闭,正在申请货位锁闭,RCS_SlotLockWarn_IsLocking,等待申请#,warning,请稍等,2021-11-26 18:30:57.0,RCS,A51488
+47,顶升传感器不带载,青鸾车顶升完成，没有检查到传感器带载信息,RCS_ActionErr_JackingLinkedButHasNoSensorInfo,青鸾车顶升完成，没有检查到传感器带载信息,warning,请检查青鸾车支架上是否有料箱,2021-11-26 18:30:57.0,RCS,A51488
+48,任务已取消,任务已取消,RCS_ActionErr_CancelWhileLiftUp,任务已取消,error,任务已被取消，请将箱子放回原位，并将小车故障离场,2021-11-26 18:30:57.0,RCS,A51488
+49,,,RCS_JobErr_Job_ExecuteFail,任务执行失败,error,,,,A51488
+50,,,RCS_RbtErr_UNKONW,未知错误,error,,,,A51488

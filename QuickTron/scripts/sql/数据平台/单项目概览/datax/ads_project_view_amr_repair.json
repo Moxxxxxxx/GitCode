@@ -1,0 +1,41 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+								"querySql":["select total_fix_time,project_code,total_fix_num,avg_fix_duration from ads_single_project_synthesis_target where cur_date = '${pre1_date}'"],
+                                "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads"]
+                            }
+                        ]
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["total_fix_time","project_code","total_fix_num","avg_fix_duration"], 
+						"preSql": ["truncate table ads_project_view_amr_repair"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_amr_repair"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

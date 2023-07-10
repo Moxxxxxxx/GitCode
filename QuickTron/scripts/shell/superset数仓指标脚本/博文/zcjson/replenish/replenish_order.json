@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,replenish_order_number,sn_unique_assist_key,tenant_id,owner_code,external_id,external_order_number,order_type,priority_type,priority_value,state,feedback_state,order_date,done_date,done_user,container_count,remark,version,zone_id,zone_code,warehouse_id,delete_flag,udf1,udf2,udf3,udf4,udf5,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,'A51264' as project_code from replenish_order " ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_replenish"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","replenish_order_number","sn_unique_assist_key","tenant_id","owner_code","external_id","external_order_number","order_type","priority_type","priority_value","state","feedback_state","order_date","done_date","done_user","container_count","remark","version","zone_id","zone_code","warehouse_id","delete_flag","udf1","udf2","udf3","udf4","udf5","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_wes_replenish", 
+                                "table": [
+                                		"replenish_order"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

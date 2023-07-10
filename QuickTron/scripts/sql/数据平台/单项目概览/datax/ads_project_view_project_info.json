@@ -1,0 +1,41 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+			"querySql":["select project_name,project_code,project_product_name,project_current_version,project_ft,project_priority,project_area,pe_members,project_progress_stage,deliver_goods_achieving_rate,pm_name from ads_project_general_view_detail where project_code in ('A51118','A51149','A51203','A51246','A51264','A51495','A51223','A51240','A51244','A51307','A51349','A51378','A51462')"],
+                                "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads"]
+                            }
+                        ]
+                    }
+                },
+		"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["project_name","project_code","project_type","project_version","ft","project_level","to_distinct","pe","pro_stage","completion_rate","pm"], 
+			"preSql": ["truncate table ads_project_view_project_info"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_project_info"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

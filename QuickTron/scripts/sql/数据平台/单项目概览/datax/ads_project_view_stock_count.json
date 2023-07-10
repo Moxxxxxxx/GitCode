@@ -1,0 +1,41 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+								"querySql":["select project_code,bucket_num_total,slot_num_total,slot_num_actual,slot_using_rate,sku_num_total,sku_num_actual,quantity_total,inventory_depth,bucket_num_actual,bucket_using_rate from ads_single_project_synthesis_target where cur_date = '${pre1_date}'"],
+                                "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads"]
+                            }
+                        ]
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["project_code","shelves_num","total_goods_num","use_goods_num","goods_rate","total_goods_sku","online_goods_sku","total_stock","avg_stock","use_shelves_num","shelves_rate"], 
+						"preSql": ["truncate table ads_project_view_stock_count"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_stock_count"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,49 @@
+{
+	"+一汽大众": {
+		"color": "#5b5",
+		"defaultProfileName": "direct",
+		"name": "一汽大众",
+		"profileType": "SwitchProfile",
+		"revision": "184c3d9c3ab",
+		"rules": [{
+			"condition": {
+				"conditionType": "HostWildcardCondition",
+				"pattern": "10.232.*.*"
+			},
+			"profileName": "一汽大众-代理1"
+		}]
+	},
+	"+一汽大众-代理1": {
+		"bypassList": [{
+			"conditionType": "BypassCondition",
+			"pattern": "127.0.0.1"
+		}, {
+			"conditionType": "BypassCondition",
+			"pattern": "[::1]"
+		}, {
+			"conditionType": "BypassCondition",
+			"pattern": "localhost"
+		}],
+		"color": "#99ccee",
+		"fallbackProxy": {
+			"host": "172.31.238.201",
+			"port": 1082,
+			"scheme": "socks5"
+		},
+		"name": "一汽大众-代理1",
+		"profileType": "FixedProfile",
+		"revision": "184c364600e"
+	},
+	"-addConditionsToBottom": false,
+	"-confirmDeletion": true,
+	"-downloadInterval": 1440,
+	"-enableQuickSwitch": true,
+	"-monitorWebRequests": true,
+	"-quickSwitchProfiles": [],
+	"-refreshOnProfileChange": true,
+	"-revertProxyChanges": true,
+	"-showExternalProfile": false,
+	"-showInspectMenu": true,
+	"-startupProfileName": "",
+	"schemaVersion": 2
+}

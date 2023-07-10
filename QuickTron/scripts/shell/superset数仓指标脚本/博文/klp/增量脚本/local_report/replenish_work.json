@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,replenish_work_number,tenant_id,owner_code,work_type,state,priority_type,priority_value,station_id,station_code,done_date,done_user,source_order_type,source_order_id,replenish_mode,opened,submit_times,remark,version,zone_id,zone_code,warehouse_id,delete_flag,udf1,udf2,udf3,udf4,udf5,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,'A51118' as project_code from replenish_work where last_updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00');"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_replenish?sserverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",  
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","replenish_work_number","tenant_id","owner_code","work_type","state","priority_type","priority_value","station_id","station_code","done_date","done_user","source_order_type","source_order_id","replenish_mode","opened","submit_times","remark","version","zone_id","zone_code","warehouse_id","delete_flag","udf1","udf2","udf3","udf4","udf5","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/local_reports", 
+                                "table": [
+                                		"replenish_work"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,picking_work_detail_id,tenant_id,state,sku_id,owner_code,work_id,pack_id,lot_id,station_slot_id,station_slot_code,station_code,quantity,short_pick,container_code,package_uuid,level3_inventory_id,bucket_code,bucket_slot_code,job_id,short_pick_flag,short_pick_reason,location_container_code,version,operator,warehouse_id,delete_flag,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,frozen_flag,'A51118' as project_code from picking_work_fulfill_detail ;"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_picking"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",  
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","picking_work_detail_id","tenant_id","state","sku_id","owner_code","work_id","pack_id","lot_id","station_slot_id","station_slot_code","station_code","quantity","short_pick","container_code","package_uuid","level3_inventory_id","bucket_code","bucket_slot_code","job_id","short_pick_flag","short_pick_reason","location_container_code","version","operator","warehouse_id","delete_flag","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","frozen_flag","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_wes_picking", 
+                                "table": [
+                                		"picking_work_fulfill_detail"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection",  
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

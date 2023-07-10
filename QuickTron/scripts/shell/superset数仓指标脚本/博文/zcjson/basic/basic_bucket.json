@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,warehouse_id,zone_id,bucket_code,bucket_type_id,enabled,station_id,owner_id,point_code,top_face,destination,alias,digital_code,cage_car_state,sku_mix_limit,attribute1,attribute2,attribute3,attribute4,attribute5,state,created_user,created_app,created_time,last_updated_user,last_updated_app,last_updated_time,extended_field,'xxxxxx' as project_code from basic_bucket"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_basic"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","warehouse_id","zone_id","bucket_code","bucket_type_id","enabled","station_id","owner_id","point_code","top_face","destination","alias","digital_code","cage_car_state","sku_mix_limit","attribute1","attribute2","attribute3","attribute4","attribute5","state","created_user","created_app","created_time","last_updated_user","last_updated_app","last_updated_time","extended_field","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://116.228.219.180:13306/evo_basic", 
+                                "table": [
+                                		"basic_bucket"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "kc87654321!", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "quicktron", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

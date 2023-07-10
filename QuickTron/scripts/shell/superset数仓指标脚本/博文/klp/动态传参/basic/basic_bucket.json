@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select warehouse_id,id,extended_field,last_updated_time,last_updated_app,last_updated_user,created_time,created_app,created_user,validate_time,validate_state,state,attribute5,attribute4,attribute3,attribute2,sku_mix_limit,attribute1,zone_id,bucket_template_id,bucket_code,bucket_type_id,enabled,station_id,owner_id,point_code,top_face,destination,alias,digital_code,cage_car_state,'${project_code}' as project_code from basic_bucket;"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_basic"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"warehouse_id","id","extended_field","last_updated_time","last_updated_app","last_updated_user","created_time","created_app","created_user","validate_time","validate_state","state","attribute5","attribute4","attribute3","attribute2","sku_mix_limit","attribute1","zone_id","bucket_template_id","bucket_code","bucket_type_id","enabled","station_id","owner_id","point_code","top_face","destination","alias","digital_code","cage_car_state","project_code"                       		
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://${host_port}/evo_basic", 
+                                "table": [
+                                		"basic_bucket"
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

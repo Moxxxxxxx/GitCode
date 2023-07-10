@@ -1,0 +1,49 @@
+{
+    "job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "hivereader",
+                    "parameter": {
+                        "hiveSql": [
+                            "select t.project_code,t.classify_value,t.num_of_times,CAST(t.num_of_times/tmp.total as decimal(10,4)) as rate
+                             from ads.ads_single_project_classify_target t
+                             left join 
+                             (
+                               select project_code,sum(num_of_times) as total
+                               from ads.ads_single_project_classify_target t
+                               where cur_date = '${pre1_date}' and classify = '人工介入'
+                               group by project_code
+                             )tmp
+                             on t.project_code = tmp.project_code
+                             where t.cur_date = '${pre1_date}' and t.classify = '人工介入'"
+                                  ],
+                                "defaultFS": "hdfs://001.bg.qkt:8020"
+                            
+                        
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["project_code","recover_mode","num","rate"], 
+						"preSql": ["truncate table ads_project_view_manual_recovery"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_manual_recovery"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

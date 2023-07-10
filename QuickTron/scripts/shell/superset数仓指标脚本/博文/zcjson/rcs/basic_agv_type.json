@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,warehouse_id,agv_type_code,agv_type_name,agv_image,first_classification,second_classification,size_information,self_weight,specified_load,jacking_height,no_load_rated_speed,full_load_rated_speed,navigation_method,positioning_accuracy,stop_accuracy,stop_angle_accuracy,battery_type,battery_capacity,rated_battery_life,charging_time,battery_life,ditch_capacity,crossing_slope_capacity,crossing_hom_capacity,operating_temperature,noise,charger_port_type,walk_face,agv_camera_distance,state,created_time,created_user,created_app,last_updated_time,last_updated_user,last_updated_app,slam_bucket_guide_front_wide_detection_added_value,slam_bucket_guide_deep_detection_added_value,reflector_guide_base_width,reflector_guide_base_depth,camera_guide_base_width,camera_guide_base_height,leave_guide_distance_off_main_line,vertical_distance_off_main_line,'A51264' as project_code from basic_agv_type"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_rcs"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","warehouse_id","agv_type_code","agv_type_name","agv_image","first_classification","second_classification","size_information","self_weight","specified_load","jacking_height","no_load_rated_speed","full_load_rated_speed","navigation_method","positioning_accuracy","stop_accuracy","stop_angle_accuracy","battery_type","battery_capacity","rated_battery_life","charging_time","battery_life","ditch_capacity","crossing_slope_capacity","crossing_hom_capacity","operating_temperature","noise","charger_port_type","walk_face","agv_camera_distance","state","created_time","created_user","created_app","last_updated_time","last_updated_user","last_updated_app","slam_bucket_guide_front_wide_detection_added_value","slam_bucket_guide_deep_detection_added_value","reflector_guide_base_width","reflector_guide_base_depth","camera_guide_base_width","camera_guide_base_height","leave_guide_distance_off_main_line","vertical_distance_off_main_line","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_rcs", 
+                                "table": [
+                                		"basic_agv_type"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

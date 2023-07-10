@@ -1,0 +1,13 @@
+{
+  "subject_name": "dim",
+  "api_name": "robot_error_code",
+  "api_desc": "故障编码",
+  "api_version": "3.4.1",
+  "jinja_content": "select distinct error_code from phoenix_basic.basic_notification where alarm_module ='robot' and alarm_level >=3",
+  "inner_validate": [],
+  "custom_validate": [],
+  "target_desc": {
+    "zh": [],
+    "en": []
+  }
+}

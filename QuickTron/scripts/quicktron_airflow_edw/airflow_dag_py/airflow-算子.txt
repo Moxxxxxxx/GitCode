@@ -1,0 +1,108 @@
+# 定义默认参数
+#### ##
+default_args = {
+    'owner': 'wangzhenjun',  # 拥有者名称
+    'depends_on_past': False,   # 是否依赖上一个自己的执行状态
+    'start_date': datetime(2019, 1, 15, 10, 00),  # 第一次开始执行的时间，为格林威治时间，为了方便测试，一般设置为当前时间减去执行周期
+    'email': ['wangzhenjun01@corp.netease.com'],  # 接收通知的email列表
+    'email_on_failure': True,  # 是否在任务执行失败时接收邮件
+    'email_on_retry': True,  # 是否在任务重试时接收邮件
+    'retries': 3,  # 失败重试次数
+    'retry_delay': timedelta(seconds=5)  # 失败重试间隔
+    # 'on_failure_callback': compass_utils.ding_failure_callback('dingding_bigdata'),
+    # 'on_success_callback': compass_utils.ding_success_callback('dingding_bigdata')，
+    # 'trigger_rule':'all_success'(默认),
+  # 'end_date': datetime(2020, 1, 1),   # 结束时间，注释掉就会一直执行下去
+}
+
+# 定义DAG
+dag = DAG(
+    dag_id='hello_world',  # dag_id
+    default_args=default_args,  # 指定默认参数
+    # schedule_interval="00, *, *, *, *"  # 执行周期，依次是分，时，天，月，年，此处表示每个整点执行
+    schedule_interval=timedelta(minutes=1)  # 执行周期，表示每分钟执行一次
+)
+####################################################################################################################
+args = {
+    'owner': 'wangzhenjun',  # 拥有者名称
+    'depends_on_past': False,   # 是否依赖上一个自己的执行状态
+    'start_date': datetime(2019, 1, 15, 10, 00),  # 第一次开始执行的时间，为格林威治时间，为了方便测试，一般设置为当前时间减去执行周期
+    'email': ['wangzhenjun01@corp.netease.com'],  # 接收通知的email列表
+    'email_on_failure': True,  # 是否在任务执行失败时接收邮件
+    'email_on_retry': True,  # 是否在任务重试时接收邮件
+    'retries': 3,  # 失败重试次数
+    'retry_delay': timedelta(seconds=5)  # 失败重试间隔
+    # 'on_failure_callback': compass_utils.ding_failure_callback('dingding_bigdata'),
+    # 'on_success_callback': compass_utils.ding_success_callback('dingding_bigdata')，
+    # 'trigger_rule':'all_success'(默认),
+  # 'end_date': datetime(2020, 1, 1),   # 结束时间，注释掉就会一直执行下去
+}
+
+with DAG(
+    dag_id='example_bash_operator', # dag_id
+    default_args=args,  # 所有operators实例化的默认参数
+    schedule_interval='0 0 * * *', # 定义DAG运行的频率
+    start_date=days_ago(2), # 第一次开始执行的时间，为格林威治时间，为了方便测试，一般设置为当前时间减去执行周期
+    dagrun_timeout=timedelta(minutes=60),  ## 运行超时时间，超过此时间的Dag 标记为失败
+    description="第一个Dag", #补充说明的描述信息
+    max_active_runs=8,  ## 同时运行的任务
+    tags=['example', 'example2'], 
+    params={"example_key": "example_value"},
+) as dag:
+
+
+
+#####################################################################################################################
+
+dag参数：
+dag_id
+description
+schedule_interval 
+timetable 
+start_date
+end_date 
+template_searchpath
+template_undefined 
+user_defined_macros 
+user_defined_filters 
+default_args 
+params 
+max_active_tasks 
+max_active_runs 
+dagrun_timeout 
+sla_miss_callback 
+default_view 
+orientation 
+catchup 
+on_failure_callback 
+on_success_callback 
+access_control 
+is_paused_upon_creation 
+jinja_environment_kwargs 
+
+
+#####################################################################################################################
+
+
+1.SSHOperator(from airflow.contrib.operators.ssh_operator import SSHOperator)
+参数：
+	(1) ssh_hook ( Optional [ airflow.providers.ssh.hooks.ssh.SSHHook ] ) – 预定义的ssh_hook用于远程执行。需要提供ssh_hook或ssh_conn_id。
+
+	(2) ssh_conn_id (可选[ str ] ) – 来自气流连接的ssh 连接 ID 。如果提供了ssh_hook ， ssh_conn_id将被忽略 。
+
+	(3) remote_host (可选[ str ] ) -- 要连接的远程主机（模板化）可为空。如果提供，它将替换在ssh_hook中定义或在ssh_conn_id的连接中预定义的remote_host。
+
+	(4) command (可选[ str ] ) -- 在远程主机上执行的命令。（模板）
+
+	(5) conn_timeout ( Optional [ int ] ) – 维护连接的超时时间（以秒为单位）。默认值为 10 秒。可以为空。如果提供，它将替换在ssh_conn_id连接中预定义的conn_timeout。
+
+	(6) cmd_timeout ( Optional [ int ] ) – 执行命令的超时时间（以秒为单位）。默认值为 10 秒。
+
+	(7) timeout ( Optional [ int ] ) – (不推荐) 执行命令的超时时间(以秒为单位)。默认值为 10 秒。请改用 conn_timeout 和 cmd_timeout 参数。
+
+	(8) environment ( Optional [ dict ] ) – shell 环境变量的字典。请注意，如果在 SSH 配置中未设置AcceptEnv ，服务器将静默拒绝它们。
+
+	(9) get_pty ( bool ) – 从服务器请求一个伪终端。设置为True 在任务超时时终止远程进程。默认值是，False但请注意 ，当命令以.Truesudo
+
+	(10) banner_timeout ( float ) – 等待来自服务器的横幅的超时时间（以秒为单位）
+2.

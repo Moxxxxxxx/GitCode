@@ -1,0 +1,122 @@
+#!/usr/bin/env python
+#coding=utf-8
+'''
+该脚本在pre-receive或post-receive钩子中被调用,也可以直接将该文件作为git的钩子使用
+若钩子为shell脚本，则需要加入以下代码调用该脚本:
+while read line;do
+        echo $line | python $PATH/pre-receive.py
+done
+当用户执行git push的时候会在远程版本库上触发此脚本
+该脚本的主要作用：获取用户提交至版本库的文件列表,提交者及时间信息
+'''
+
+import sys,subprocess
+import commands
+ 
+class Hooks(object):
+
+	#git reset --soft HEAD~1
+	global curent_date
+	global remarkStr
+ 	(ds,do)=commands.getstatusoutput('date +%Y-%m-%d')
+	curent_date = do
+
+	
+	remarkStr="\t> 请按照如下操作重新设置user.name以及user.email\n \t> 例如：钉钉邮箱为test@flashhold.com\n \t> git config user.name \"test\"\n \t> git config user.email \"test@flashhold.com\""
+
+	def __init__(self):
+		'''
+		初始化文件列表信息，提交者信息，提交时间,当前操作的分支
+		'''
+		self.pushAuthor = ""
+		self.pushAuthorEmail = ""
+		self.pushTime = ""
+		self.fileList = []
+		self.pushBrance = ""
+		self.pushCommit = ""
+		print "\033[0;33m开始审核提交者以及提交者邮箱是否符合规范..................\033[0m"
+ 
+	def getGitInfo(self):
+		'''
+		进行初始化git标准输入端数据
+		'''
+		self.oldObject,self.newObject,self.pushBrance = sys.stdin.readline().strip().split(' ')
+ 
+	def getPushInfo(self):
+		'''
+		git show命令获取push作者，时间，以及文件列表
+		文件的路径为相对于版本库根目录的一个相对路径
+		'''
+		rev = subprocess.Popen('git rev-list '+self.newObject,shell=True,stdout=subprocess.PIPE)
+		revList = rev.stdout.readlines()
+		revList = [x.strip() for x in revList]
+		
+		#查找从上次提交self.oldObject之后还有多少次提交，即本次push提交的object列表
+		# if len(revList) == 1:
+		# 	pushList = revList[:1]
+		# 	print "为零",pushList
+		# else:
+		# 	indexOld = revList.index(self.oldObject)
+		# 	pushList = revList[:indexOld]
+		# 	print "非0",pushList
+		pushList = revList[:1]
+		
+
+
+		#循环获取每次提交的文件列表
+		for pObject in pushList:
+			p = subprocess.Popen('git show --pretty=format:"%an~%ae~%ci" '+pObject,shell=True,stdout=subprocess.PIPE)
+			pipe = p.stdout.readlines()
+			pipe = [x.strip() for x in pipe]
+
+			# 获取提交信息，提交者，邮箱，提交时间，以及提交的文件列表
+			self.pushCommit = pObject
+			resultCommit = pipe[0].split('~')
+			self.pushAuthor = resultCommit[0]
+			self.pushAuthorEmail = resultCommit[1]
+			self.pushTime = resultCommit[2]
+			self.fileList.extend([ '/'.join(fileName.split("/")[1:]) for fileName in pipe if fileName.startswith("+++") and not fileName.endswith("null")])
+
+
+	#从外部文件读取员工信息
+	def db_txt(self,author,email):
+		fo=open("/home/git/data/authorinfo/authorinfo.txt","r+")
+		#fo=open("/home/data/git/authorinfo.txt","r+")
+		lineNumber=0
+		for line in fo:
+			user=line.split('@')[0]
+			if author==user and email==line.replace("\n",""):
+				lineNumber=1
+				break
+		fo.close()
+		return lineNumber
+
+
+	def getGitPushInfo(self):
+		'''
+		进行提交者信息审核
+		'''
+		self.getGitInfo()
+		self.getPushInfo()
+
+		print "\033[0;36m提交者信息：%s\033[0m" %(self.pushCommit)
+		print "\033[0;36m提交者为：%s\033[0m" %(self.pushAuthor)
+		print "\033[0;36m提交者邮箱为：%s\033[0m" %(self.pushAuthorEmail)
+		print "\033[0;36m提交的日期为：%s\033[0m" %(self.pushTime)
+		print "\033[0;36m提交的文件列表为：%s\033[0m" %(self.fileList)
+		print "\033[0;36m提交的分支为：%s\033[0m" %(self.pushBrance)
+
+		if self.db_txt(self.pushAuthor,self.pushAuthorEmail)>=1:
+			print "\033[1;32muser.name和user.email审核通过........\033[0m"
+			if curent_date != self.pushTime.split(' ')[0]:
+				print "\033[0;31mWARN:commit的时间与push时间不在同一天，请下次提交代码注意，应当天commit，当天push\033[0m"
+			#if curent_date == git_date.split(' ')[0]:
+			#	print "\033[0;31mtWARN:commit的时间与push时间不在同一天，请下次提交代码注意！，应当天commit，当天push\033[0m"
+			sys.exit(0)
+		else:
+			print "\033[1;31m你的user.name或者user.email审核不通过\n %s\033[0m" %(remarkStr)
+			sys.exit(1)
+ 
+if __name__ == "__main__":
+	t = Hooks()
+	t.getGitPushInfo()

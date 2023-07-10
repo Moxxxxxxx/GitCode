@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,warehouse_id,zone_code,job_id,job_type,state,agv_code,agv_type,priority,order_id,work_id,detail_id,sku_id,lot_id,pack_id,frozen,package_type,owner_code,quantity,fullfill_quantity,qty_mismatch_reason,new_bucket_slot_code,bucket_code,bucket_slot_code,bucket_slot_type_id,bucket_waypoint_code,bucket_face_num,target_face_num,station_code,station_waypoint_code,bucket_move_job_id,created_app,created_date,updated_app,updated_date,'A51118' as project_code from guided_put_away_job where updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00');"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wcs_g2p"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron", 
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","warehouse_id","zone_code","job_id","job_type","state","agv_code","agv_type","priority","order_id","work_id","detail_id","sku_id","lot_id","pack_id","frozen","package_type","owner_code","quantity","fullfill_quantity","qty_mismatch_reason","new_bucket_slot_code","bucket_code","bucket_slot_code","bucket_slot_type_id","bucket_waypoint_code","bucket_face_num","target_face_num","station_code","station_waypoint_code","bucket_move_job_id","created_app","created_date","updated_app","updated_date","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/local_reports", 
+                                "table": [
+                                		"guided_put_away_job"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

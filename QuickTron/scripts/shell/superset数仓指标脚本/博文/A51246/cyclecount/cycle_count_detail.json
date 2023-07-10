@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,warehouse_id,cycle_count_id,level3_inventory_id,inventory_profit_version,owner_code,sku_id,lot_id,pack_id,level1_container_code,level2_container_code,frozen_flag,version,station_code,zone_code,bucket_code,bucket_slot_code,bucket_face,quantity,runtime_quantity,actual_quantity,diff_quantity,diff_reason,remark,delete_flag,operator,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,' A51246' as project_code from cycle_count_detail where last_updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00')"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_cyclecount"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","warehouse_id","cycle_count_id","level3_inventory_id","inventory_profit_version","owner_code","sku_id","lot_id","pack_id","level1_container_code","level2_container_code","frozen_flag","version","station_code","zone_code","bucket_code","bucket_slot_code","bucket_face","quantity","runtime_quantity","actual_quantity","diff_quantity","diff_reason","remark","delete_flag","operator","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://116.228.219.180:13306/evo_wes_cyclecount", 
+                                "table": [
+                                		"cycle_count_detail"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "kc87654321!", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "quicktron", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

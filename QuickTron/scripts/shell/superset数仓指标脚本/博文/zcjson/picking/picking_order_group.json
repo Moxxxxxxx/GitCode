@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,group_code,unique_assist_key,picking_group_type,external_id,tenant_id,state,udf1,udf2,udf3,udf4,udf5,version,warehouse_id,station_id,station_code,delete_flag,create_flag,start_date,deliver_date,priority_type,priority_value,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,'A51264' as project_code from picking_order_group where last_updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00')"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_picking"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","group_code","unique_assist_key","picking_group_type","external_id","tenant_id","state","udf1","udf2","udf3","udf4","udf5","version","warehouse_id","station_id","station_code","delete_flag","create_flag","start_date","deliver_date","priority_type","priority_value","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://116.228.219.180:13306/evo_wes_picking", 
+                                "table": [
+                                		"picking_order_group"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "kc87654321!", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "quicktron", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

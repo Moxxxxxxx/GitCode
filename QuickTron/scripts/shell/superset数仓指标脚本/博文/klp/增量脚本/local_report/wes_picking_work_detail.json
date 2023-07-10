@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,picking_work_id,picking_order_detail_id,tenant_id,level2_inventory_id,level3_inventory_id,owner_code,sku_id,lot_id,use_frozen_flag,pack_id,state,quantity,fulfill_quantity,short_pick,version,zone_code,warehouse_id,delete_flag,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,'A51118' as project_code from picking_work_detail where last_updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00');"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_picking"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",  
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","picking_work_id","picking_order_detail_id","tenant_id","level2_inventory_id","level3_inventory_id","owner_code","sku_id","lot_id","use_frozen_flag","pack_id","state","quantity","fulfill_quantity","short_pick","version","zone_code","warehouse_id","delete_flag","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/local_reports", 
+                                "table": [
+                                		"wes_picking_work_detail"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection",  
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

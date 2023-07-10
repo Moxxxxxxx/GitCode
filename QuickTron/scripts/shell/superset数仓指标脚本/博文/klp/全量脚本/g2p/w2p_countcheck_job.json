@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,warehouse_id,zone_code,job_id,job_type,state,agv_code,agv_type,priority,work_id,detail_id,station_code,workbin_code,target_waypoint_code,turnover_bucket_code,turnover_bucket_slot_code,turnover_bucket_face,created_app,created_date,updated_app,updated_date,'A51118' as project_code from w2p_countcheck_job ;"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wcs_g2p"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron", 
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","warehouse_id","zone_code","job_id","job_type","state","agv_code","agv_type","priority","work_id","detail_id","station_code","workbin_code","target_waypoint_code","turnover_bucket_code","turnover_bucket_slot_code","turnover_bucket_face","created_app","created_date","updated_app","updated_date","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_wcs_g2p", 
+                                "table": [
+                                		"w2p_countcheck_job"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

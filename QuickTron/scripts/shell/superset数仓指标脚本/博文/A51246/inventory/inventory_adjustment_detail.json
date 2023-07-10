@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,warehouse_id,inventory_adjustment_id,from_owner_code,from_sku_id,from_lot_id,from_pack_id,from_frozen_flag,from_bucket_slot_code,from_level1_container_code,from_level2_container_code,from_quantity,from_feedback_quantity,to_owner_code,to_sku_id,to_lot_id,to_pack_id,to_frozen_flag,to_bucket_slot_code,to_level1_container_code,to_level2_container_code,to_level3_inventory_id,to_inventory_profit_version,to_quantity,to_feedback_quantity,version,remark,delete_flag,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,to_zone_code,from_zone_code,from_bucket_code,to_bucket_code,state,'A51246' as project_code from inventory_adjustment_detail where last_updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00');"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_inventory"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root", 
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","warehouse_id","inventory_adjustment_id","from_owner_code","from_sku_id","from_lot_id","from_pack_id","from_frozen_flag","from_bucket_slot_code","from_level1_container_code","from_level2_container_code","from_quantity","from_feedback_quantity","to_owner_code","to_sku_id","to_lot_id","to_pack_id","to_frozen_flag","to_bucket_slot_code","to_level1_container_code","to_level2_container_code","to_level3_inventory_id","to_inventory_profit_version","to_quantity","to_feedback_quantity","version","remark","delete_flag","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","to_zone_code","from_zone_code","from_bucket_code","to_bucket_code","state","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://116.228.219.180:13306/evo_wes_inventory", 
+                                "table": [
+                                		"inventory_adjustment_detail"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "kc87654321!", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "quicktron", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

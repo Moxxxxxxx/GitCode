@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,create_time,update_time,job_accept_time,action_point_code,action_state,agv_code,bucket_id,bucket_point_code,can_interrupt,dest_point_code,is_let_down,is_report_event,job_context,job_id,robot_job_id,job_mark,job_priority,job_state,job_type,own_job_type,src_job_type,top_face_list,warehouse_id,zone_code,'A51118' as project_code from agv_job ;"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_rcs"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",   
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","create_time","update_time","job_accept_time","action_point_code","action_state","agv_code","bucket_id","bucket_point_code","can_interrupt","dest_point_code","is_let_down","is_report_event","job_context","job_id","robot_job_id","job_mark","job_priority","job_state","job_type","own_job_type","src_job_type","top_face_list","warehouse_id","zone_code","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_rcs", 
+                                "table": [
+                                		"agv_job"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

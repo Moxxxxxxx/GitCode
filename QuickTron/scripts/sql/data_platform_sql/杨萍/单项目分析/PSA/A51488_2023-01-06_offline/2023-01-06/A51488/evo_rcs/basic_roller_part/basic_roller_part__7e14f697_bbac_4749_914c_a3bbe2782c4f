@@ -1,0 +1,13 @@
+id,roller_no,install_angle,work_direction,roller_team,roller_layer,delta_x,delta_y,created_user,created_app,created_time,last_updated_user,last_updated_app,last_updated_time,min_height,max_height,project_code=Long-Long-Long-String-Long-Long-Long-Long-String-String-Date-String-String-Date-Long-Long=bigint(10)-int(2)-int(3)-varchar(128)-int(2)-int(1)-int(10)-int(10)-varchar(128)-varchar(128)-datetime(3)-varchar(128)-varchar(128)-datetime(3)-int(11)-int(11)
+3,1,0,180,1,1,0,0,EVO_BASIC,yhx,2020-10-26 11:56:07.0,EVO_BASIC,yhx,2020-10-26 11:56:13.845,0,0,A51488
+4,1,90,90;-90,1,1,0,0,EVO_BASIC,yhx,2020-10-26 11:56:32.0,EVO_BASIC,yhx,2020-10-26 11:56:37.796,0,0,A51488
+5,1,90,90,1,1,400,0,EVO_BASIC,yhx,2020-10-26 11:56:54.0,EVO_BASIC,yhx,2020-10-27 18:32:49.65,0,0,A51488
+7,2,0,0;180,1,1,0,0,EVO_BASIC,yhx,2020-10-26 11:55:05.0,EVO_BASIC,yhx,2020-10-26 11:55:16.0,0,0,A51488
+23,2,90,90,2,1,-400,0,EVO_BASIC,yhx,2020-10-26 11:56:54.0,EVO_BASIC,yhx,2021-06-11 15:30:15.2,0,0,A51488
+25,1,90,90;-90,1,1,0,0,EVO_BASIC,ysl,2020-10-26 11:56:54.0,EVO_BASIC,ysl,2021-06-11 18:45:38.218,400,400,A51488
+26,2,90,90;-90,1,1,0,0,EVO_BASIC,ysl,2020-10-26 11:56:54.0,EVO_BASIC,ysl,2021-06-11 18:45:38.268,400,400,A51488
+27,3,90,90;-90,2,2,0,0,EVO_BASIC,ysl,2020-10-26 11:56:54.0,EVO_BASIC,ysl,2021-06-11 18:45:38.302,1220,1220,A51488
+28,4,90,90;-90,2,2,0,0,EVO_BASIC,ysl,2020-10-26 11:56:54.0,EVO_BASIC,ysl,2021-06-11 18:45:38.335,1220,1220,A51488
+29,1,0,0,1,1,0,0,EVO_BASIC,ysl,2020-10-26 11:56:54.0,EVO_BASIC,ysl,2021-06-11 18:45:38.335,0,0,A51488
+30,1,90,90;-90,1,1,213,0,EVO_BASIC,ysl,2020-10-26 11:56:54.0,EVO_BASIC,ysl,2021-06-11 19:01:08.4,1105,1185,A51488
+31,2,90,90;-90,2,1,-213,0,EVO_BASIC,ysl,2020-10-26 11:56:54.0,EVO_BASIC,ysl,2021-06-11 19:01:08.43,1105,1185,A51488

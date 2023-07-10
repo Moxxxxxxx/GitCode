@@ -1,0 +1,56 @@
+{
+  "subject_name": "robot_error_map",
+  "api_name": "hour_error_rate_ts",
+  "api_desc": "按小时统计小车故障次数",
+  "api_version": "3.4.1",
+  "jinja_content": "-- 按小时统计故障次数\nSELECT\n    CONCAT(SUBSTRING(start_time, 1, 13), ':00:00') AS date_value\n    , count(distinct id) as error_num\nFROM phoenix_basic.basic_notification\nWHERE start_time between '{{ start_time }}' and '{{ end_time }}'\n    {% if robot_code %} AND robot_code IN {{ ja_concat_in(robot_code) }} {% endif %}  -- 机器人编码\n    {% if error_code %} AND error_code IN {{ ja_concat_in(error_code) }} {% endif %}  -- 错误码\n    AND alarm_level >= 3\n    AND alarm_module ='robot' \n    AND point_location is not null\n    AND point_location like '%x=%'\ngroup by 1\norder by 1 ASC",
+  "inner_validate": [
+    "time"
+  ],
+  "custom_validate": [
+    {
+      "v_key": "robot_type_code",
+      "v_type": "str",
+      "v_desc": "机器人类型",
+      "v_default": ""
+    },
+    {
+      "v_key": "robot_code",
+      "v_type": "str",
+      "v_desc": "机器人编码",
+      "v_default": ""
+    },
+    {
+      "v_key": "error_code",
+      "v_type": "str",
+      "v_desc": "故障编码",
+      "v_default": ""
+    }
+  ],
+  "target_desc": {
+    "zh": [
+      {
+        "target_key": "date_value",
+        "name": "统计时间",
+        "desc": "按小时的统计时间"
+      },
+      {
+        "target_key": "error_num",
+        "name": "故障数量",
+        "desc": "按小时统计故障数量"
+      }
+    ],
+    "en": [
+      {
+        "target_key": "date_value",
+        "name": "datetime",
+        "desc": "datetime by hour"
+      },
+      {
+        "target_key": "error_num",
+        "name": "error num",
+        "desc": "error num"
+      }
+    ]
+  }
+}

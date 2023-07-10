@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,agv_part_code,agv_type_id,agv_part_name,agv_part_layer,rotation_radius,offset_off_center_x,offset_off_center_y,safe_length,length,width,height,safe_width,safe_height,state,remark,created_time,created_user,created_app,last_updated_time,last_updated_user,last_updated_app,roller_parts,'A51118' as project_code from basic_agv_part;"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_rcs"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",   
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","agv_part_code","agv_type_id","agv_part_name","agv_part_layer","rotation_radius","offset_off_center_x","offset_off_center_y","safe_length","length","width","height","safe_width","safe_height","state","remark","created_time","created_user","created_app","last_updated_time","last_updated_user","last_updated_app","roller_parts","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_rcs", 
+                                "table": [
+                                		"basic_agv_part"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

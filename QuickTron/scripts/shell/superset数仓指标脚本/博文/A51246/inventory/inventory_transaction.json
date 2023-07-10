@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,warehouse_id,inventory_level,inventory_id,biz_type,biz_type_group,inventory_action_type,biz_idempotent_id,biz_bill_id,biz_bill_number,biz_bill_detail_id,zone_code,bucket_code,bucket_slot_code,level1_container_code,level2_container_code,owner_code,sku_id,sn_enabled,lot_id,pack_id,frozen_flag,quantity,out_locked_quantity,in_locked_quantity,post_quantity,post_out_locked_quantity,post_in_locked_quantity,transaction_time,state,correlation_id,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,'A51246' as project_code from inventory_transaction where last_updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00');"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_inventory"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root", 
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","warehouse_id","inventory_level","inventory_id","biz_type","biz_type_group","inventory_action_type","biz_idempotent_id","biz_bill_id","biz_bill_number","biz_bill_detail_id","zone_code","bucket_code","bucket_slot_code","level1_container_code","level2_container_code","owner_code","sku_id","sn_enabled","lot_id","pack_id","frozen_flag","quantity","out_locked_quantity","in_locked_quantity","post_quantity","post_out_locked_quantity","post_in_locked_quantity","transaction_time","state","correlation_id","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://116.228.219.180:13306/evo_wes_inventory", 
+                                "table": [
+                                		"inventory_transaction"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "kc87654321!", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "quicktron", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

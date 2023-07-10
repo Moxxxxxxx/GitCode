@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,warehouse_id,zone_code,job_id,lift_group_id,busi_group_id,left_group_id,floor,job_type,state,source,agv_code,agv_type,priority_type,priority,bucket_move_type,bucket_code,station_code,source_waypoint_code,target_waypoint_code,top_face,top_faces,sequence,bucket_face_num,put_down,need_operation,agv_end_point,lock_flag,bucket_type_code,check_code,stand_by_flag,created_app,created_date,updated_app,updated_date,flag,'A51118' as project_code from bucket_move_job where updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00');"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wcs_g2p"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron", 
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+						        "id","warehouse_id","zone_code","job_id","lift_group_id","busi_group_id","left_group_id","floor","job_type","state","source","agv_code","agv_type","priority_type","priority","bucket_move_type","bucket_code","station_code","source_waypoint_code","target_waypoint_code","top_face","top_faces","sequence","bucket_face_num","put_down","need_operation","agv_end_point","lock_flag","bucket_type_code","check_code","stand_by_flag","created_app","created_date","updated_app","updated_date","flag","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/local_reports", 
+                                "table": [
+                                		"bucket_move_job"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

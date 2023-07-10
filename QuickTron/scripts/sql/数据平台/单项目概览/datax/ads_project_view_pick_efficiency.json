@@ -1,0 +1,41 @@
+{
+"job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+			"querySql":["select project_code,station_num,station_num_total,station_free_rate,picking_orderline_efficiency,picking_quantity_efficiency,once_into_station_times,once_instation_duration,once_station_interval,once_picking_sku,once_picking_order,once_picking_orderline,once_picking_quantity from ads_single_project_synthesis_target where cur_date = '${pre1_date}'"],
+                        "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads"]
+                            }
+                        ]
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["project_code","work_station_on","work_station_num","work_station_free_rate","pick_efficiency_line","pick_efficiency_piece","enter_workstation","avg_on_station","avg_wait_car","sku_num","order_num","order_line_num","order_piece_num"], 
+						"preSql": ["truncate table ads_project_view_pick_efficiency"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_pick_efficiency"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

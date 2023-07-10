@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,unit_id,message_id,unit_type,warning_type,title,service_name,read_status,status,event,notify_level,happen_at,close_at,message_body,compress_message_body,warehouse_id,created_user,created_app,created_time,last_updated_user,last_updated_app,last_updated_time,'A51246' as project_code from notification_message "   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/notification"
+                                	]
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","unit_id","message_id","unit_type","warning_type","title","service_name","read_status","status","event","notify_level","happen_at","close_at","message_body","compress_message_body","warehouse_id","created_user","created_app","created_time","last_updated_user","last_updated_app","last_updated_time","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/notification", 
+                                "table": [
+                                		"notification_message"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

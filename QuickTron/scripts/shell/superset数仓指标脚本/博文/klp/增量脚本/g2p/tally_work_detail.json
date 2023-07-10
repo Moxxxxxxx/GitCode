@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,warehouse_id,zone_code,order_id,work_id,work_detail_id,owner_code,sku_id,lot_id,pack_id,frozen,pack_type,station_code,bucket_code,bucket_slot_code,l3_inventory_id,quantity,act_quantity,state,stage,created_app,created_date,updated_app,updated_date,id_from_wes,'A51118' as project_code from tally_work_detail where updated_date between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00');"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wcs_g2p"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron", 
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","warehouse_id","zone_code","order_id","work_id","work_detail_id","owner_code","sku_id","lot_id","pack_id","frozen","pack_type","station_code","bucket_code","bucket_slot_code","l3_inventory_id","quantity","act_quantity","state","stage","created_app","created_date","updated_app","updated_date","id_from_wes","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_wcs_g2p", 
+                                "table": [
+                                		"tally_work_detail"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

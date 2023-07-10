@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,bucket_type_code,warehouse_id,apply_type,virtual_type,move_type,walk_through,length,width,height,weight_limit,available_length,available_width,available_height,layer_layout,layer_color,work_face,deliver_face,parcel_collect_face,deny_enter_face,face_count,layer_count,leg_diameter,state,created_time,created_user,created_app,last_updated_time,last_updated_user,last_updated_app,'xxxxxx' as project_code from basic_bucket_type"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_basic"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","bucket_type_code","warehouse_id","apply_type","virtual_type","move_type","walk_through","length","width","height","weight_limit","available_length","available_width","available_height","layer_layout","layer_color","work_face","deliver_face","parcel_collect_face","deny_enter_face","face_count","layer_count","leg_diameter","state","created_time","created_user","created_app","last_updated_time","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://116.228.219.180:13306/evo_basic", 
+                                "table": [
+                                		"basic_bucket_type"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "kc87654321!", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "quicktron", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

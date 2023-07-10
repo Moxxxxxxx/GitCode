@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,warehouse_id,bucket_code,bucket_slot_code,level1_container_code,level2_container_code,owner_code,sku_id,lot_id,pack_id,frozen_flag,quantity,out_locked_quantity,in_locked_quantity,profit_version,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,zone_code,'A51118' as project_code from level3_inventory "   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_inventory"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron", 
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","warehouse_id","bucket_code","bucket_slot_code","level1_container_code","level2_container_code","owner_code","sku_id","lot_id","pack_id","frozen_flag","quantity","out_locked_quantity","in_locked_quantity","profit_version","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","zone_code","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_wes_inventory", 
+                                "table": [
+                                		"level3_inventory"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

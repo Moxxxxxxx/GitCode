@@ -1,0 +1,56 @@
+{
+    "job": {
+        "content": [
+            {
+                "reader": {
+                    "name": "mysqlreader", 
+                    "parameter": {
+                        "column": [
+                        		                                         		
+                        	], 
+                        "connection": [
+                            {		
+                            	   "querySql": [
+                                    "select id,replenish_order_id,tenant_id,owner_code,external_id,state,sku_id,sku_code,lot_id,pack_id,unit_id,level1_container_code,level2_container_code,level3_container_code,station_slot_id,quantity,fulfill_quantity,use_frozen_flag,version,zone_id,zone_code,warehouse_id,delete_flag,lot_att01,lot_att02,lot_att03,lot_att04,lot_att05,lot_att06,lot_att07,lot_att08,lot_att09,lot_att10,lot_att11,lot_att12,created_date,created_user,created_app,last_updated_date,last_updated_user,last_updated_app,'A51118' as project_code from replenish_order_detail ;"
+                                ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_wes_replenish?sserverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "NSyevBNEt47vetd", 
+                        "username": "sup_quicktron",  
+                        "where": ""
+                    }
+                }, 
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+                        		"id","replenish_order_id","tenant_id","owner_code","external_id","state","sku_id","sku_code","lot_id","pack_id","unit_id","level1_container_code","level2_container_code","level3_container_code","station_slot_id","quantity","fulfill_quantity","use_frozen_flag","version","zone_id","zone_code","warehouse_id","delete_flag","lot_att01","lot_att02","lot_att03","lot_att04","lot_att05","lot_att06","lot_att07","lot_att08","lot_att09","lot_att10","lot_att11","lot_att12","created_date","created_user","created_app","last_updated_date","last_updated_user","last_updated_app","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_wes_replenish?sserverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8", 
+                                "table": [
+                                		"replenish_order_detail"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}

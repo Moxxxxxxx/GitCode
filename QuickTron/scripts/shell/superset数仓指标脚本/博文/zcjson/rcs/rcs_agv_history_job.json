@@ -1,0 +1,55 @@
+{
+     "job": {
+         "content": [
+             {
+                 "reader": {
+                     "name": "mysqlreader", 
+                     "parameter": {
+                        "column": [], 
+                         "connection": [
+                             {      
+                                   "querySql": [
+                                     "select id,agv_id,bucket_id,bucket_pointcode,dest_pointcode,gmt_create,gmt_create_user,gmt_modified,gmt_modified_user,job_id,job_mark,job_priority,job_priority_type,job_state,job_type,let_down,own_job_type,priority_create,top_face,warehouse_id,'A51264' as project_code from rcs_agv_history_job where gmt_modified between concat(date_sub(curdate(),interval 1 day),' 00:00:00') and concat(curdate(),' 04:00:00')"   ],
+                                "jdbcUrl": [
+                                		"jdbc:mysql://127.0.0.1:3306/evo_rcs"
+                                	] 
+                                
+                            }
+                        ], 
+                        "password": "root123", 
+                        "username": "root",
+                        "where": ""
+                    }
+                }, 
+
+                "writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": [
+"id","agv_id","bucket_id","bucket_pointcode","dest_pointcode","gmt_create","gmt_create_user","gmt_modified","gmt_modified_user","job_id","job_mark","job_priority","job_priority_type","job_state","job_type","let_down","own_job_type","priority_create","top_face","warehouse_id","project_code"
+                        		], 
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://58.34.1.38:3306/evo_rcs", 
+                                "table": [
+                                		"rcs_agv_history_job"                       		
+                                	]
+                            }
+                        ], 
+                        "password": "Datax_quicktron_$#@", 
+                        "preSql": [], 
+                        "session": [], 
+                        "username": "datax_collection", 
+                        "writeMode": "update"
+                    }
+                }
+            }            
+        ], 
+        "setting": {
+            "speed": {
+                "channel": "1"
+            }
+        }
+    }
+}
+

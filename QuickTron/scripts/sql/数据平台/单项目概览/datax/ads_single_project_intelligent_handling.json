@@ -1,0 +1,41 @@
+{
+"job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+								"querySql":["select project_code,send_workbin,exc_workbin,cancel_workbin,agv_use_rate,cur_hour,cur_datetime from ads_single_project_intelligent_handling where cur_date = '${pre1_date}'"],
+                                "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads"]
+                            }
+                        ]
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["project_code","send_workbin","exc_workbin","cancel_workbin","agv_use_rate","time_sharing","timestamp_sharing"], 
+						"preSql": ["truncate table ads_project_view_smart_system_operate_count"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_smart_system_operate_count"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

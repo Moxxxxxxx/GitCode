@@ -1,0 +1,44 @@
+{
+"job": {
+        "setting": {
+            "speed": {
+                "channel": 1
+            }
+        },
+        "content": [
+            {
+                 "reader": {
+                    "name": "rdbmsreader",
+                    "parameter": {
+                        "username": "wangyingying",
+                        "password": "wangyingying4",
+                        "connection": [
+                            {
+								"querySql":["select project_progress_stage,project_code,project_stage,deliver_goods_achieving_rate,date(pre_project_approval_time),contract_signed_date,date(project_handover_end_time),date(sap_entry_date),expect_online_date,online_date,online_overdue_days,expect_final_inspection_date,final_inspection_date,final_inspection_overdue_days,deliver_goods_desc 
+											 from ads_project_general_view_detail 
+											 where project_code in ('A51118','A51149','A51203','A51246','A51264','A51495','A51223','A51240','A51244','A51307','A51349','A51378','A51462')"],
+                                "jdbcUrl": ["jdbc:hive2://003.bg.qkt:10000/ads"]
+                            }
+                        ]
+                    }
+                },
+				"writer": {
+                    "name": "mysqlwriter", 
+                    "parameter": {
+                        "column": ["process_stage_group","project_code","process_stage","delivery_completed_rate","lead_time","contract_date","handover_time","entrance_time",
+						           "planned_launch_time","actual_launch_time","launch_out_time","planned_accept_time","actual_accept_time","accept_out_time","delivery_status"], 
+						"preSql": ["truncate table ads_project_view_project_process"],
+                        "connection": [
+                            {
+                                "jdbcUrl": "jdbc:mysql://007.bg.qkt:3306/evo_wds_base", 
+                                "table": ["ads_project_view_project_process"]
+                            }
+                        ], 
+                        "password": "quicktron123456", 
+                        "username": "root"
+                    }
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,6 @@
+ods_qkt_report_ab_user_role_ful
+ods_qkt_report_dashboard_slices_ful
+ods_qkt_report_dashboards_ful
+ods_qkt_report_logs_da
+ods_qkt_report_slices_ful
+ods_qkt_report_ab_role_ful

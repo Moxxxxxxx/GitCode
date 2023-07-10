@@ -1,0 +1,76 @@
+{
+  "subject_name": "robot_error_map",
+  "api_name": "map_heat_data",
+  "api_desc": "小车故障热力图",
+  "api_version": "3.4.1",
+  "jinja_content": "-- 小车故障热力图\nSELECT\n\tsubstring_index(substring_index(point_location, \"x=\", -1), \",\", 1)                   as x\n\t, substring_index(substring_index(replace(point_location, \")\", \"\"), \"y=\", -1), \",\", 1) as y\n\t, case when point_location like \"%pointCode%\" \n\t\tthen substring_index(substring_index(replace(point_location, \")\", \"\"), \"pointCode=\", -1), \",\", 1) \n\t\telse null end as point_code\n\t,count(distinct id) as error_num\nFROM phoenix_basic.basic_notification\nWHERE \n\tstart_time between '{{ start_time }}' and '{{ end_time }}'\n\t{% if robot_code %} AND robot_code IN {{ ja_concat_in(robot_code) }} {% endif %}  -- 机器人编码\n\t{% if error_code %} AND error_code IN {{ ja_concat_in(error_code) }} {% endif %}  -- 错误码\n    AND alarm_level >= 3\n    AND alarm_module ='robot' \n    AND point_location is not null\n    AND point_location like '%x=%'\ngroup by 1,2,3\norder by 4 DESC",
+  "inner_validate": [
+    "time"
+  ],
+  "custom_validate": [
+    {
+      "v_key": "robot_type_code",
+      "v_type": "str",
+      "v_desc": "机器人类型",
+      "v_default": ""
+    },
+    {
+      "v_key": "robot_code",
+      "v_type": "str",
+      "v_desc": "机器人编码",
+      "v_default": ""
+    },
+    {
+      "v_key": "error_code",
+      "v_type": "str",
+      "v_desc": "故障编码",
+      "v_default": ""
+    }
+  ],
+  "target_desc": {
+    "zh": [
+      {
+        "target_key": "x",
+        "name": "x",
+        "desc": "X 坐标"
+      },
+      {
+        "target_key": "y",
+        "name": "y",
+        "desc": "Y坐标"
+      },
+      {
+        "target_key": "point_code",
+        "name": "码点",
+        "desc": "地图上的码点"
+      },
+      {
+        "target_key": "error_num",
+        "name": "故障数量",
+        "desc": "按照坐标统计的故障数量"
+      }
+    ],
+    "en": [
+      {
+        "target_key": "x",
+        "name": "x",
+        "desc": "point coordinate  x"
+      },
+      {
+        "target_key": "y",
+        "name": "y",
+        "desc": "point coordinate  x"
+      },
+       {
+        "target_key": "point_code",
+        "name": "point code",
+        "desc": "point code for map"
+      },
+      {
+        "target_key": "error_num",
+        "name": "error num",
+        "desc": "error num"
+      }
+    ]
+  }
+}
