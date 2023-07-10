@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:dependabot" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:dependabot" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:pip" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="916c0656-fe93-40de-989c-42bfbfe72870" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/01. Pandas数据分析系列课程介绍.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/01. Pandas数据分析系列课程介绍.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02. Pandas读取数据.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/02. Pandas读取数据.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/03. Pandas数据结构.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/03. Pandas数据结构.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04. Pandas查询数据.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/04. Pandas查询数据.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/05. Pandas新增数据列.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/05. Pandas新增数据列.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/06. Pandas数据统计函数.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/06. Pandas数据统计函数.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/07. Pandas缺失值处理.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/07. Pandas缺失值处理.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/08. Pandas的SettingWithCopyWarning报警怎么解决.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/08. Pandas的SettingWithCopyWarning报警怎么解决.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/09. Pandas数据排序.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/09. Pandas数据排序.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/10. Pandas字符串处理.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/10. Pandas字符串处理.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/46. 计算每个学生成绩最相似的10个学生.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/46. 计算每个学生成绩最相似的10个学生.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/datas/student_grade/相似计算结果.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/datas/student_grade/相似计算结果.xlsx" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="DatabaseView">
+    <option name="SHOW_INTERMEDIATE" value="true" />
+    <option name="GROUP_DATA_SOURCES" value="true" />
+    <option name="GROUP_SCHEMA" value="true" />
+    <option name="GROUP_CONTENTS" value="false" />
+    <option name="SORT_POSITIONED" value="false" />
+    <option name="SHOW_EMPTY_GROUPS" value="false" />
+    <option name="AUTO_SCROLL_FROM_SOURCE" value="false" />
+    <option name="HIDDEN_KINDS">
+      <set />
+    </option>
+    <expand />
+    <select />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="JupyterTrust" id="21add0ea-ae85-48f2-bc1f-c7e5b668eb42" />
+  <component name="ProjectConfigurationFiles">
+    <option name="files">
+      <list>
+        <option value="$PROJECT_DIR$/.idea/ant-learn-pandas.iml" />
+        <option value="$PROJECT_DIR$/.idea/misc.xml" />
+        <option value="$PROJECT_DIR$/.idea/vcs.xml" />
+        <option value="$PROJECT_DIR$/.idea/dataSources.xml" />
+        <option value="$PROJECT_DIR$/.idea/modules.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectId" id="1YWIrqSA1DpVrwL5L39M6DRmV9d" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="DatabaseDriversLRU" value="mysql" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="database.console.LAST_STATE" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
+    <property name="nodejs_npm_path_reset_for_default_project" value="true" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="916c0656-fe93-40de-989c-42bfbfe72870" name="Default Changelist" comment="" />
+      <created>1568214798616</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1568214798616</updated>
+      <workItem from="1568214801499" duration="762000" />
+      <workItem from="1583052181564" duration="685000" />
+      <workItem from="1583968520820" duration="652000" />
+      <workItem from="1611365896931" duration="501000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="722" y="233" key="RollbackChangesDialog" timestamp="1611365913054">
+      <screen x="0" y="25" width="1920" height="1004" />
+    </state>
+    <state x="722" y="233" key="RollbackChangesDialog/0.25.1920.1004@0.25.1920.1004" timestamp="1611365913054" />
+  </component>
+</project>
