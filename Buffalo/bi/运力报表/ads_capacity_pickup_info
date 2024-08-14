@@ -1,0 +1,104 @@
+INSERT INTO ads_capacity_pickup_info 
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+select date
+,sum(case when company='Skynet' then nm else 0 end ) as skynet
+,sum(case when company='ITT' then nm else 0 end ) as itt
+,sum(case when company='Fast Way' then nm else 0 end ) as fastway
+,sum(case when company='DPD' then nm else 0 end ) as dpd
+,sum(case when company='Buffalo' then nm else 0 end ) as buffalo 
+from 
+(-- skynet取件
+select 
+'Skynet' as company
+,case when e.expresscompanyid =3 then 'buffalo'
+   when  e.expresscompanyid =2 then 'fastway'
+   when  e.expresscompanyid =2266452665457878 then 'itt'
+   when   e.expresscompanyid = 7 then 'paxi'
+   when    e.expresscompanyid =8 then 'skynet'
+   when e.expresscompanyid =2590541559123122 then 'dpdlaser'
+   else '' end as company2
+,IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1)) as date
+,count(distinct expressnumber) as nm
+from buffaloex_delivery.express e 
+join buffaloex_delivery.expressrecord e2 on e2.expressid = e.id and e2.del = 0 
+and e.clientid not in ('2272458790721303','2815762535679143')
+and e2.expresscompanyid =8 
+and e2.trackcode in ('564')
+and SUBSTR(e2.displaytime,1,10)=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+union
+-- ITT
+select 
+'ITT' as company
+,case when e.expresscompanyid =3 then 'buffalo'
+   when  e.expresscompanyid =2 then 'fastway'
+   when  e.expresscompanyid =2266452665457878 then 'itt'
+   when   e.expresscompanyid = 7 then 'paxi'
+   when    e.expresscompanyid =8 then 'skynet'
+   when e.expresscompanyid =2590541559123122 then 'dpdlaser'
+   else '' end as company2
+,IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1)) as date
+,count(distinct expressnumber) as nm
+from buffaloex_delivery.express e 
+join buffaloex_delivery.expressrecord e2 on e2.expressid = e.id and e2.del = 0   
+and e.clientid not in ('2272458790721303','2815762535679143')
+and e2.expresscompanyid =2266452665457878
+and e2.trackcode in ('O','dhs','dht')
+and SUBSTR(e2.displaytime,1,10)=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+UNION
+-- DPD
+select 
+'DPD' as company
+,case when e.expresscompanyid =3 then 'buffalo'
+   when  e.expresscompanyid =2 then 'fastway'
+   when  e.expresscompanyid =2266452665457878 then 'itt'
+   when   e.expresscompanyid = 7 then 'paxi'
+   when    e.expresscompanyid =8 then 'skynet'
+   when e.expresscompanyid =2590541559123122 then 'dpdlaser'
+   else '' end as company2
+,IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1)) as date
+,count(distinct expressnumber) as nm
+from buffaloex_delivery.express e 
+join buffaloex_delivery.expressrecord e2 on e2.expressid = e.id and e2.del = 0   
+and e.clientid not in ('2272458790721303','2815762535679143')
+and e2.expresscompanyid =2590541559123122
+and e2.trackcode in ('9','10')
+and SUBSTR(e2.displaytime,1,10)=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+UNION
+-- fastway
+select 
+'Fast Way' as company
+,case when e.expresscompanyid =3 then 'buffalo'
+   when  e.expresscompanyid =2 then 'fastway'
+   when  e.expresscompanyid =2266452665457878 then 'itt'
+   when   e.expresscompanyid = 7 then 'paxi'
+   when    e.expresscompanyid =8 then 'skynet'
+   when e.expresscompanyid =2590541559123122 then 'dpdlaser'
+   else '' end as company2
+,IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1)) as date
+,count(distinct expressnumber) as nm
+from buffaloex_delivery.express e 
+join buffaloex_delivery.expressrecord e2 on e2.expressid = e.id and e2.del = 0 
+and e.clientid not in ('2272458790721303','2815762535679143')
+and e2.expresscompanyid =2
+and e2.trackcode in ('PPP')
+and SUBSTR(e2.displaytime,1,10)=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+UNION
+-- Buffalo
+select 
+'Buffalo' as company
+,case when e.expresscompanyid =3 then 'buffalo'
+   when  e.expresscompanyid =2 then 'fastway'
+   when  e.expresscompanyid =2266452665457878 then 'itt'
+   when   e.expresscompanyid = 7 then 'paxi'
+   when    e.expresscompanyid =8 then 'skynet'
+   when e.expresscompanyid =2590541559123122 then 'dpdlaser'
+   else '' end as company2
+,IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1)) as date
+,count(distinct expressnumber) as nm
+from buffaloex_delivery.express e 
+join buffaloex_delivery.expressrecord e2 on e2.expressid = e.id and e2.del = 0 
+and e.clientid not in ('2272458790721303','2815762535679143')
+and  e2.module like '%Courier App>>Dispatch Pick%'
+and SUBSTR(e2.displaytime,1,10)=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+)a 
+GROUP BY 1
