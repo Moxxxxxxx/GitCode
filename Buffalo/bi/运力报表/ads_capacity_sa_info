@@ -1,0 +1,33 @@
+INSERT INTO ads_capacity_sa_info 
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+SELECT 
+  IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1)) AS stat_date,
+  (
+  -- 约堡仓入库单量
+  select count(distinct expressnumber)
+  from buffaloex_delivery.expresstimerecord a 
+  left join buffaloex_delivery.express b
+  on a.expressid=b.id
+  where a.hubid = 823519816802652 -- 约堡入库
+  and b.clientid not in ('2272458790721303','2815762535679143')
+  and date(from_unixtime(if(a.inboundtime>0,a.inboundtime,a.cantransittime)/1000-6*3600))=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+  ) yb_in_count,
+  (
+    -- 约堡机器人分拣量
+    select count(l.expressnumber) 
+  from buffaloex_robot.libiaorobotpickingrecord l 
+  where l.businesshubid = 823519816802652  -- JHB 
+  and l.expressnumber > '' 
+  and status in (20,22,30)
+  and date(from_unixtime(l.createtime/1000-3600*6)) =IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+  ) yb_robot_count,
+    (
+    -- 约堡仓实际已出库单量
+    select count(distinct b.expressnumber)
+    from buffaloex_delivery.expresstimerecord a 
+    left join buffaloex_delivery.express b
+    on a.expressid=b.id
+    where a.hubid = 823519816802652 
+    and b.clientid not in ('2272458790721303','2815762535679143')
+    and date(from_unixtime(if(a.outboundtime>0,a.outboundtime,a.transittime)/1000-6*3600))=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+  ) yb_real_out_count
