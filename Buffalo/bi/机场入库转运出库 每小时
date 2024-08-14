@@ -1,0 +1,117 @@
+with dayhour as
+(
+  select * 
+  from 
+  (
+    SELECT DATE_ADD('2024-01-01', INTERVAL (n-1) DAY) AS date_sequence
+    FROM 
+		(
+      SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+      FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+    ) numbers
+    WHERE DATE_ADD('2024-01-01', INTERVAL (n-1) DAY) <= CURRENT_DATE()   
+    ORDER BY date_sequence
+  )t
+  JOIN
+  (
+	  SELECT '00' AS i UNION SELECT '01' UNION SELECT '02' UNION SELECT '03'
+    UNION SELECT '04' UNION SELECT '05' UNION SELECT '06' UNION SELECT '07'
+    UNION SELECT '08' UNION SELECT '09' UNION SELECT '10' UNION SELECT '11' 
+    UNION SELECT '12' UNION SELECT '13' UNION SELECT '14' UNION SELECT '15'
+    UNION SELECT '16' UNION SELECT '17' UNION SELECT '18' UNION SELECT '19' 
+    UNION SELECT '20' UNION SELECT '21' UNION SELECT '22' UNION SELECT '23'
+  )hours
+)
+
+SELECT DATE_FORMAT(t.time,'%Y-%m-%d %H:%i:%s') as datetime,
+       t.time,
+       IF(t.time<DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H'),0,IFNULL(d.intaxunpaidqty,0)) as intaxunpaidqty, -- 已入库未付税数量
+			 IF(t.time<DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H'),0,IFNULL(e.intaxclearanceqty,0)) as intaxclearanceqty, -- 已入库已清关已付税数量
+			 IF(t.time<DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H'),0,IFNULL(f.over24qty,0)) as over24qty,-- 处于wait for delivery>24h数量
+			 IF(t.time<DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H'),0,IFNULL(g.collectnoinqty,0)) as collectnoinqty, -- 已colllect未入库数量
+			 IF(t.time<DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H'),0,IFNULL(h.zainboundqty,0)) as zainboundqty -- 目的国入库订单总数
+from
+(
+  SELECT CONCAT(date_sequence, ' ', i) AS time
+  FROM dayhour
+)t
+left join 
+(
+  select count(DISTINCT e.expressnumber) as intaxunpaidqty,
+	       DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H') as time
+  from buffaloex2.express e,buffaloex2.expressaging a
+  where e.id=a.expressid and e.status <90 and a.zainboundtime>0 and a.taxpaidtime=0
+	   and a.zaoutboundtime=0 and a.airportoutboundtime=0 and e.discardssign=0 -- 已入库未付税未出库
+	   and FROM_UNIXTIME(e.createtime/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
+) d 
+on t.time =  d.time
+left join 
+(
+  select count(DISTINCT e.expressnumber) as intaxclearanceqty,
+		 DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H') as time
+  from 
+  (
+    select e.expressnumber
+    from buffaloex2.express e,buffaloex2.expressaging a
+    where e.id=a.expressid and e.status <90 and a.zainboundtime>0 and a.taxpaidtime>0 and a.clearancefinishtime>0 
+	  and a.zaoutboundtime=0 and a.airportoutboundtime=0
+	  and e.discardssign = 0 and e.ordertype not in (70,90) and e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') and e.status = 67 and e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia  holding状态 异常件 只保留Scanned in at SA warehouse状态
+	  and FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime)/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
+  ) e
+  left join 
+  (
+    select expressnumber
+    from ads.ads_exception_total_detail_dd
+    group by expressnumber
+  )et
+  on e.expressnumber = et.expressnumber
+  where et.expressnumber is null
+) e 
+on t.time =  e.time
+left join 
+(
+  select count(DISTINCT e.expressnumber) as over24qty,
+		 DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H') as time
+  from 
+  (
+    select e.expressnumber
+    from buffaloex2.express e,buffaloex2.expressaging a
+    where e.id=a.expressid and e.status <90 and a.zainboundtime>0 and a.taxpaidtime>0 and a.clearancefinishtime>0 
+	  and a.zaoutboundtime=0 and a.airportoutboundtime=0
+	  and (UNIX_TIMESTAMP(NOW())*1000 - GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime))/1000/3600>24 -- 已入库已付税已清关未出库且超过24h
+	  and e.discardssign = 0 and e.ordertype not in (70,90) and e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') and e.status = 67 and e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia  holding状态 异常件 只保留Scanned in at SA warehouse状态
+	  and FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime)/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
+  ) e
+  left join 
+  (
+    select expressnumber
+    from ads.ads_exception_total_detail_dd
+    group by expressnumber
+  )et
+  on e.expressnumber = et.expressnumber
+  where et.expressnumber is null
+) f
+on t.time =  f.time
+left join 
+(
+  select count(DISTINCT e.expressnumber) as collectnoinqty,
+	       DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H') as time
+  from buffaloex2.express e,buffaloex2.expressaging a,buffaloex2.blnumber b
+  where e.id=a.expressid and e.status <90 and e.blnumber=b.blnumber and b.collecttime>0 
+	  and a.zaoutboundtime=0 and a.airportoutboundtime=0 -- 已取件未出库
+		and FROM_UNIXTIME(b.collecttime/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
+) g 
+on t.time =  g.time
+left join 
+(
+  select count(DISTINCT e.expressnumber) as zainboundqty,
+	       DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H') as time
+  from buffaloex2.express e,buffaloex2.expressaging a
+  where e.id=a.expressid and e.status <90 and a.zainboundtime>0 and a.zaoutboundtime=0 and a.airportoutboundtime=0 -- 已入库未出库
+	  and FROM_UNIXTIME(a.zainboundtime/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
+) h
+on t.time =  h.time
+where t.time = DATE_FORMAT(DATE_SUB(now(),INTERVAL 6 HOUR),'%Y-%m-%d %H')
+order by t.time desc
