@@ -1,0 +1,26 @@
+INSERT INTO ads_capacity_delivered_info 
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+select date
+,sum(case when company='skynet' then nm else 0 end ) as skynet
+,sum(case when company='itt' then nm else 0 end ) as itt
+,sum(case when company='fastway' then nm else 0 end ) as fastway
+,sum(case when company='dpdlaser' then nm else 0 end ) as dpd
+,sum(case when company='buffalo' then nm else 0 end ) as buffalo
+from 
+(select 
+date(from_unixtime(e1.finishtime/1000-6*3600)) as date
+,case when e1.expresscompanyid =3 then 'buffalo'
+   when  e1.expresscompanyid =2 then 'fastway'
+   when  e1.expresscompanyid =2266452665457878 then 'itt'
+   when  e1.expresscompanyid = 7 then 'paxi'
+   when  e1.expresscompanyid =8 then 'skynet'
+   when e1.expresscompanyid =2590541559123122 then 'dpdlaser'
+   else '' end as company
+,count (distinct e1.expressnumber) as nm
+from buffaloex_delivery.express e1
+where e1.sendstatus != 80 #剔除异常件
+and e1.sendstatus != 90 #剔除异常件
+and e1.clientid not in ('2272458790721303','2815762535679143')
+and date(from_unixtime(e1.finishtime/1000-6*3600))=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+group by 1,2
+)a
