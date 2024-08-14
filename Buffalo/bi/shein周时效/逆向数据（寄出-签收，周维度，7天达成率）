@@ -1,0 +1,24 @@
+select 
+week(DATE_SUB(date(pick_confirm_time),INTERVAL 1 day))+1 as week_day
+, MIN(date(pick_confirm_time)) as stat_date
+, MAX(date(pick_confirm_time)) as end_date
+, count(1) as `包裹数量`
+, sum(if(spend_days <= 7 and spend_days >= 0,1,0)) as `寄出-签收7天达成`
+FROM
+(
+SELECT e.expressnumber as expressnumber
+,FROM_UNIXTIME(ee.pickeduptime/1000, '%Y-%m-%d %H:%i:%s') as pick_confirm_time
+,FROM_UNIXTIME(etr.inboundtime/1000, '%Y-%m-%d %H:%i:%s') as inboundtime
+,(etr.inboundtime - ee.pickeduptime)/1000/3600/24 as spend_days
+,row_number() over(partition by e.expressnumber order by etr.inboundtime) as rn
+FROM buffaloex_delivery.express e 
+left join buffaloex_delivery.expressextend ee on e.id = ee.expressid
+left join buffaloex_delivery.expresstimerecord etr on e.id = etr.expressid -- and ee.terminaldcid = etr.hubid
+left join buffaloex_delivery.expressrecord er on e.id = er.expressid 
+WHERE e.clientid = 2272458790721303 -- shein return
+AND e.returntype in (40, 50)  -- buffalo 自揽件
+and er.sendstatus = 13
+and FROM_UNIXTIME(ee.pickeduptime/1000,'%Y-%m-%d %H:%i:%s') >= '2024-03-04 00:00:00'
+) t where rn = 1
+group by week(DATE_SUB(date(pick_confirm_time),INTERVAL 1 day))+1
+order by week(DATE_SUB(date(pick_confirm_time),INTERVAL 1 day))+1
