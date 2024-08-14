@@ -1,0 +1,43 @@
+SELECT e2.expressnumber AS '订单编码',
+			 CASE WHEN e1.clientid IN (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303) THEN 'SHEIN'
+						WHEN e1.clientid IN (2689675408624712) THEN 'TEMU'
+			      WHEN e1.clientid IN (1056829164731914) THEN '云途物流'
+						WHEN e1.clientid IN (1141518236609059) THEN '燕文物流'
+			 END AS '客户名称',
+			 IF(e1.ordertype = 110,'清派订单','全程订单') AS '订单类型',
+       CASE e2.sendstatus 
+       WHEN -3 THEN "Tax Unpaid and not committed Inbound"
+       WHEN -2 THEN "Tax Unpaid and not committed Confirmed"
+       WHEN 1 THEN "Unpaid Confirmed"
+       WHEN  2 THEN "Not Committed Confirmed"
+       WHEN  3 THEN "Not Committed Inbound"
+       WHEN  5 THEN "Order Confirmed-下单成功"
+       WHEN  13 THEN "Pick Complete-已取件"
+       WHEN  17 THEN "Pack Complete-打包完成"
+       WHEN  20 THEN "In the Transit-转运中"
+       WHEN  30 THEN "Inbound-已入库"
+       WHEN  45 THEN "Wait Delivery-待派送"
+       WHEN  50 THEN "Dispatching-派送中"
+       WHEN  60 THEN "The Second Delivery-二次派送"
+       WHEN  64 THEN "Returning-退货中"
+       WHEN  65 THEN "Return Goods-退货"
+       WHEN  70 THEN "Client Received-签收"
+       WHEN  80 THEN "Shut Out-关单"
+       WHEN  90 THEN "Cancel-取消"
+       END AS '订单派送状态',
+			 FROM_UNIXTIME(IF(erg.createtime = 0,NULL,erg.createtime)/1000-6*3600,'%Y-%m-%d %H:%i:%s') AS '最后退回时间',
+			 IF(erg.discardmark = 1,'是','否') AS '是否弃件',
+       IF(e1.ordertype = 110,FROM_UNIXTIME(IF(e1.africareceivetime = 0,NULL,e1.africareceivetime)/1000-6*3600,'%Y-%m-%d %H:%i:%s'),FROM_UNIXTIME(IF(ea.cninboundtime = 0,NULL,ea.cninboundtime)/1000,'%Y-%m-%d %H:%i:%s')) AS '南非落地时间/国内入库时间' 
+FROM buffaloex2.express e1
+LEFT JOIN buffaloex_delivery.express e2 
+ON e1.expressnumber = e2.expressnumber
+LEFT JOIN 
+(
+  SELECT *,ROW_NUMBER() OVER (PARTITION BY expressid ORDER BY createtime DESC) AS rn
+	FROM buffaloex_delivery.expressreturngoods
+)erg
+ON e2.expressnumber = erg.expressnumber AND erg.rn = 1
+LEFT JOIN buffaloex2.expressaging ea
+ON e1.id = ea.expressid
+WHERE e1.clientid IN (2689675408624712,1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303,1056829164731914,1141518236609059)
+  AND e2.sendstatus NOT IN (70,80,90) -- 签收、关单、取消
