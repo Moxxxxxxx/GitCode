@@ -1,0 +1,128 @@
+-- 未处理
+SELECT FROM_UNIXTIME(t.uploadprooftime/1000-6*3600,'%Y-%m-%d') as stat_date,
+       FROM_UNIXTIME(t.uploadprooftime/1000-6*3600,'%Y-%m-%d %H:%i:%s') as stat_time,
+		   t.id as taxpackageinfoid,
+		   e.expressnumber,
+			 e.companyname,
+			 u.`name` as dealproofusername,
+			 null as dealproofdate,
+			 null as dealprooftime,
+			 null as spend_time,
+			 -1 as type,
+             'Proof of tax payment' as source_data
+FROM buffaloex2.taxpackageinfo t
+LEFT JOIN buffaloex2.user u
+ON t.dealproofuserid = u.id
+LEFT JOIN 
+(
+  SELECT taxpackageinfoid,
+		     GROUP_CONCAT(expressnumber) as expressnumber,
+			   GROUP_CONCAT(DISTINCT sendcompany) as companyname
+	FROM buffaloex2.express
+	GROUP BY taxpackageinfoid
+)e
+ON t.id = e.taxpackageinfoid
+WHERE t.uploadprooftime > 0 AND t.dealproofresult = 0 AND t.dealprooftime = 0 AND t.finishtime = 0
+
+UNION ALL
+
+-- 已拒绝
+SELECT FROM_UNIXTIME(t.uploadprooffirsttime/1000,'%Y-%m-%d') as stat_date,
+       FROM_UNIXTIME(t.uploadprooffirsttime/1000,'%Y-%m-%d %H:%i:%s') as stat_time,
+	     t.id as taxpackageinfoid,
+			 e.expressnumber,
+			 e.companyname,
+			 u.`name` as dealproofusername,
+			 FROM_UNIXTIME(IF(t.dealprooftime=0,null,t.dealprooftime)/1000,'%Y-%m-%d') as dealproofdate,
+			 FROM_UNIXTIME(IF(t.dealprooftime=0,null,t.dealprooftime)/1000,'%Y-%m-%d %H:%i:%s') as dealprooftime,
+			 TIMESTAMPDIFF(HOUR,FROM_UNIXTIME(t.uploadprooffirsttime/1000,'%Y-%m-%d %H:%i:%s'),FROM_UNIXTIME(IF(t.dealprooftime=0,null,t.dealprooftime)/1000,'%Y-%m-%d %H:%i:%s')) as spend_time,
+			 0 as type,
+             'Record of tax operation' as source_data
+FROM buffaloex2.taxpackageinfo t
+LEFT JOIN buffaloex2.user u
+ON t.dealproofuserid = u.id 
+LEFT JOIN 
+(
+  SELECT taxpackageinfoid,GROUP_CONCAT(expressnumber) as expressnumber,GROUP_CONCAT(DISTINCT sendcompany) as companyname
+	FROM buffaloex2.express
+	GROUP BY taxpackageinfoid
+)e
+ON t.id = e.taxpackageinfoid
+WHERE t.dealproofresult = 10 -- refuse
+
+UNION ALL
+
+-- 已处理量 Tax commit history paid
+SELECT FROM_UNIXTIME(t.createtime/1000,'%Y-%m-%d') as stat_date,
+       FROM_UNIXTIME(t.createtime/1000,'%Y-%m-%d %H:%i:%s') as stat_time,
+	     null as taxpackageinfoid,
+			 t.orderno as expressnumber,
+			 e.companyname,
+			 u.`name` as dealproofusername,
+			 FROM_UNIXTIME(IF(t.createtime=0,null,t.createtime)/1000,'%Y-%m-%d') as dealproofdate,
+			 FROM_UNIXTIME(IF(t.createtime=0,null,t.createtime)/1000,'%Y-%m-%d %H:%i:%s') as dealprooftime,
+			 TIMESTAMPDIFF(HOUR,FROM_UNIXTIME(t.createtime/1000,'%Y-%m-%d %H:%i:%s'),FROM_UNIXTIME(IF(t.createtime=0,null,t.createtime)/1000,'%Y-%m-%d %H:%i:%s')) as spend_time,
+			 1 as type,
+       'Tax commit history' as source_data
+FROM buffaloex2.taxcommitrecord t
+LEFT JOIN 
+(
+  SELECT id,taxpackageinfoid,sendcompany as companyname
+	FROM buffaloex2.express
+	GROUP BY taxpackageinfoid
+)e
+ON t.expressid = e.id
+LEFT JOIN buffaloex2.user u
+ON t.createuserid = u.id 
+WHERE t.tab not in (1,3)
+
+UNION ALL
+
+-- 已处理量 sys history
+SELECT FROM_UNIXTIME(t.createtime/1000-6*3600,'%Y-%m-%d') as stat_date,
+       FROM_UNIXTIME(t.createtime/1000-6*3600,'%Y-%m-%d %H:%i:%s') as stat_time,
+			 e.taxpackageinfoid,
+			 e.expressnumber,
+			 e.companyname,
+			 SUBSTRING_INDEX(t.result,':',-1) as dealproofusername,
+			 FROM_UNIXTIME(IF(t.updatetime=0,null,t.updatetime)/1000,'%Y-%m-%d') as dealproofdate,
+			 FROM_UNIXTIME(IF(t.updatetime=0,null,t.updatetime)/1000,'%Y-%m-%d %H:%i:%s') as dealprooftime,
+			 TIMESTAMPDIFF(HOUR,FROM_UNIXTIME(t.createtime/1000-6*3600,'%Y-%m-%d %H:%i:%s'),FROM_UNIXTIME(IF(t.updatetime=0,null,t.updatetime)/1000,'%Y-%m-%d %H:%i:%s')) as spend_time,
+			 1 as type,
+             'Sys history' as source_data
+FROM buffaloex2.fnbbalancerecord t
+LEFT JOIN 
+(
+  SELECT id,taxpackageinfoid,expressnumber,sendcompany as companyname
+	FROM buffaloex2.express
+	GROUP BY taxpackageinfoid
+)e
+ON t.workid = e.id
+where t.status=30
+
+UNION ALL
+
+-- 已处理量 record of tax operation
+SELECT FROM_UNIXTIME(t.uploadprooffirsttime/1000,'%Y-%m-%d') as stat_date,
+       FROM_UNIXTIME(t.uploadprooffirsttime/1000,'%Y-%m-%d %H:%i:%s') as stat_time,
+			 t.id as taxpackageinfoid,
+			 e.expressnumber,
+			 e.companyname,
+			 u.`name` as dealproofusername,
+			 FROM_UNIXTIME(IF(t.dealprooftime=0,null,t.dealprooftime)/1000,'%Y-%m-%d') as dealproofdate,
+			 FROM_UNIXTIME(IF(t.dealprooftime=0,null,t.dealprooftime)/1000,'%Y-%m-%d %H:%i:%s') as dealprooftime,
+			 TIMESTAMPDIFF(HOUR,FROM_UNIXTIME(t.uploadprooffirsttime/1000,'%Y-%m-%d %H:%i:%s'),FROM_UNIXTIME(IF(t.dealprooftime=0,null,t.dealprooftime)/1000,'%Y-%m-%d %H:%i:%s')) as spend_time,
+			 1 as type,
+             'Record of tax operation' as source_data
+FROM buffaloex2.taxpackageinfo t
+LEFT JOIN buffaloex2.user u
+ON t.dealproofuserid = u.id 
+LEFT JOIN 
+(
+  SELECT taxpackageinfoid,GROUP_CONCAT(expressnumber) as expressnumber,GROUP_CONCAT(DISTINCT sendcompany) as companyname
+	FROM buffaloex2.express
+	GROUP BY taxpackageinfoid
+)e
+ON t.id = e.taxpackageinfoid
+WHERE t.dealproofresult not in (-1,10)
+  AND t.uploadprooftime > 0 AND t.dealprooftime != 0
