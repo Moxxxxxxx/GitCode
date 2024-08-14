@@ -1,0 +1,86 @@
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+TRUNCATE TABLE `ads`.`ads_express_fulfillment_efficiency_courier`
+INSERT INTO `ads`.`ads_express_fulfillment_efficiency_courier` 
+SELECT t1.expressnumber, -- 订单号
+       t1.customer_name, -- 客户名称
+       t1.province, -- 省份
+       t1.sendstatus, -- delivery订单状态
+       t1.company, -- 快递公司
+       from_unixtime(t2.courier_outbound_time / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as jhb_Driver_outboundtime, -- 快递员南非出库时间
+       from_unixtime(t2.courier_dispatch_time / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as courier_pickup_time, -- 快递员取件时间
+       (t2.courier_dispatch_time - t2.courier_outbound_time) / 1000 / 3600 as courier_pickup -- 快递员出库-快递员取件
+FROM `ads`.`ads_express_fulfillment_efficiency_jhb` t1
+JOIN
+(
+  SELECT a.expressnumber, -- 订单号
+	     a.sendstatus, -- 派送状态
+	     a.expressid, -- 订单id
+         a.createtime as courier_outbound_time, -- 快递员出库时间戳
+         b.createtime as courier_dispatch_time -- 快递员取件时间戳
+  FROM
+  (
+    SELECT e.expressnumber, -- 订单号
+		   e.sendstatus, -- 派送状态
+		   e.id as expressid, -- 订单id
+           e2.createtime, -- 快递员出库时间戳
+           IF(e2.module like '%DC App>>Dispatch Pick%' OR e2.module like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%',0,1) as is_outorpick, -- 0：出库，1：取件
+           row_number () over(partition by e.expressnumber order by e2.createtime asc) as rn
+           ,e2.content,e2.module,IF(e2.module like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%' or e2.module like '%Courier App>>Dispatch Pick%',e.hubid,e2.hubid) as hubid
+    FROM buffaloex_delivery.express e 
+    JOIN 
+    (
+      SELECT e2.expressid,e2.createtime,e2.content,e2.module,e3.hubid
+      FROM buffaloex_delivery.expressrecord e2
+      LEFT JOIN buffaloex_delivery.outbounddeliveryorderdetail e3
+      ON e2.createtime = e3.createtime AND e2.expressid = e3.expressid AND e2.module like '%DC App>>Dispatch Pick%' AND e3.hubid = 823519816802652 -- 南非仓
+      WHERE e2.del = 0 AND (e2.module like '%DC App>>Dispatch Pick%' OR e2.module like '%Courier App>>Dispatch Pick%')
+      AND e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+        
+      UNION 
+        
+      SELECT expressid,createtime,content,module,null as hubid
+      FROM buffaloex_delivery.expressoperationrecord  
+      WHERE module like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%'
+      AND createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+    )e2
+    ON e2.expressid = e.id 
+    WHERE e.sendstatus < 80
+      AND e.expresscompanyid not in (2590541559123122,2,2266452665457878,8,7,14) -- 排除第三方派送
+      AND IF(e2.module like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%' or e2.module like '%Courier App>>Dispatch Pick%',e.hubid,e2.hubid) = 823519816802652
+  )a
+  LEFT JOIN
+  (
+    SELECT e.expressnumber, -- 订单号
+		   e.sendstatus, -- 派送状态
+		   e.id as expressid, -- 订单id
+           e2.createtime, -- 快递员出库时间戳
+           IF(e2.module like '%DC App>>Dispatch Pick%' OR e2.module like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%',0,1) as is_outorpick, -- 0：出库，1：取件
+           row_number () over(partition by e.expressnumber order by e2.createtime asc) as rn
+           ,e2.content,e2.module,IF(e2.module like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%' or e2.module like '%Courier App>>Dispatch Pick%',e.hubid,e2.hubid) as hubid
+    FROM buffaloex_delivery.express e 
+    JOIN 
+    (
+      SELECT e2.expressid,e2.createtime,e2.content,e2.module,e3.hubid
+      FROM buffaloex_delivery.expressrecord e2
+      LEFT JOIN buffaloex_delivery.outbounddeliveryorderdetail e3
+      ON e2.createtime = e3.createtime AND e2.expressid = e3.expressid AND e2.module like '%DC App>>Dispatch Pick%' AND e3.hubid = 823519816802652 -- 南非仓
+      WHERE e2.del = 0 AND (e2.module like '%DC App>>Dispatch Pick%' OR e2.module like '%Courier App>>Dispatch Pick%')
+      AND e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+        
+      UNION 
+        
+      SELECT expressid,createtime,content,module,null as hubid
+      FROM buffaloex_delivery.expressoperationrecord  
+      WHERE module like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%'
+      AND createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+    )e2
+    ON e2.expressid = e.id 
+    WHERE e.sendstatus < 80
+      AND e.expresscompanyid not in (2590541559123122,2,2266452665457878,8,7,14) -- 排除第三方派送
+      AND IF(e2.module like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%' or e2.module like '%Courier App>>Dispatch Pick%',e.hubid,e2.hubid) = 823519816802652
+  )b
+  ON a.expressnumber = b.expressnumber AND a.is_outorpick = b.is_outorpick - 1 AND a.rn = b.rn - 1
+  WHERE a.is_outorpick = 0
+)t2
+ON t1.expressnumber = t2.expressnumber
+WHERE from_unixtime(t2.courier_outbound_time / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') IS NOT NULL;
