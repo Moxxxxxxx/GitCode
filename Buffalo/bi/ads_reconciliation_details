@@ -1,0 +1,35 @@
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+truncate table `ads`.`ads_reconciliation_details` ;
+INSERT INTO `ads`.`ads_reconciliation_details` 
+SELECT h.customer, -- 客户
+       h.ordertype, -- 产品类型
+       h.expressnumber, -- 订单号
+       h.blnumber, -- 提单号
+       h.thirdnumber, -- 包裹号（reference）
+       from_unixtime(h.createtime/1000,'%Y-%m-%d %H:%i:%s') as createtime, -- 下单时间
+       from_unixtime(h.cninboundtime/1000,'%Y-%m-%d %H:%i:%s') as cninboundtime, -- 华南入库时间
+       from_unixtime(h.terminaltransit/1000,'%Y-%m-%d %H:%i:%s') as deliverytime, -- 交邮时间（尾程物流商揽收时间）
+       from_unixtime(h.trytime/1000,'%Y-%m-%d %H:%i:%s') as trytime, -- 尝试派送时间
+       from_unixtime(h.signedtime/1000,'%Y-%m-%d %H:%i:%s') as signedtime, -- 签收时间
+       from_unixtime(h.dcreceivereturntime/1000,'%Y-%m-%d %H:%i:%s') as dcreceivereturntime, -- 仓库收到退货时间
+       from_unixtime(h.terminaltransit/1000,'%Y-%m-%d %H:%i:%s') as clearancepaymenttime, -- 清关费出账时间（交邮时间）
+       from_unixtime(LEAST(IFNULL(h.trytime,253402185600000),IFNULL(h.signedtime,253402185600000),IFNULL(h.dcreceivereturntime,253402185600000))/1000,'%Y-%m-%d %H:%i:%s') as fullshippingfeebillingtime, -- 尾派费/全程运费出账时间
+       from_unixtime(LEAST(IFNULL(h.signedtime,253402185600000),IFNULL(h.dcreceivereturntime,253402185600000))/1000,'%Y-%m-%d %H:%i:%s') as fullshippingfeefirstpaymentbillingtime, -- 尾派费/全程运费首款出账时间
+       e.areaid, -- 派送区域（Area）
+       c.weight * 1000 as weight, -- 预估重量g
+       c.finalweight * 1000 as finalweight, -- 实际重量g
+       c.ascertainedcost / 100 as ascertainedcost,-- 实际运费（CNY）
+       c.operatingcost / 100 as operatingcost, -- 操作费（CNY）
+       c.cost / 100 as cost, -- 运费总计（CNY）
+       e.customerdeclaredvalue / 100 as customerdeclaredvalue,  -- 申报价值（USD）
+       d.length, -- 长
+       d.width,-- 宽
+       d.height-- 高
+FROM `dwd`.`dwd_express_node_monitor_hi` h
+LEFT JOIN `buffaloex2`.`express` e
+ON h.expressnumber = e.expressnumber
+LEFT JOIN `buffaloex2`.`expresscost` c
+ON e.id = c.expressid
+LEFT JOIN `buffaloex2`.`expressboxdetail` d
+ON e.id = d.expressid
+WHERE h.customer = 'temu'
