@@ -1,0 +1,78 @@
+truncate table `ads`.`ads_express_node_monitor_hi` ;
+INSERT INTO `ads`.`ads_express_node_monitor_hi` 
+SELECT expressnumber, -- 运单号
+       sendcompany, -- 发件公司
+       customer, -- 客户名称
+       ordertype, -- 运单类型
+       province, -- 省/州
+       thirdnumber, -- 包裹号
+       blnumber, -- 提单号
+       currentstatus, -- 当前节点
+       null as orderstatus,-- 运单状态
+       clearancestatus, -- 清关状态
+       taxpaystatus, -- 付税状态
+       case when ordertype = '小包清+派' and province = 'Eastern Cape' then 16
+            when ordertype = '小包清+派' and province = 'Free State' then 11
+            when ordertype = '小包清+派' and province = 'Gauteng' then 9
+            when ordertype = '小包清+派' and province = 'KwaZulu-Natal' then 11
+            when ordertype = '小包清+派' and province = 'Limpopo' then 10
+            when ordertype = '小包清+派' and province = 'Mpumalanga' then 10
+            when ordertype = '小包清+派' and province = 'North West' then 10
+            when ordertype = '小包清+派' and province = 'Northern Cape' then 15
+            when ordertype = '小包清+派' and province = 'Western Cape' then 10
+            when ordertype = '小包发货DDU' and province = 'Eastern Cape' then 23
+            when ordertype = '小包发货DDU' and province = 'Free State' then 18
+            when ordertype = '小包发货DDU' and province = 'Gauteng' then 16
+            when ordertype = '小包发货DDU' and province = 'KwaZulu-Natal' then 18
+            when ordertype = '小包发货DDU' and province = 'Limpopo' then 17
+            when ordertype = '小包发货DDU' and province = 'Mpumalanga' then 17
+            when ordertype = '小包发货DDU' and province = 'North West' then 17
+            when ordertype = '小包发货DDU' and province = 'Northern Cape' then 22
+            when ordertype = '小包发货DDU' and province = 'Western Cape' then 17
+       end as standard_ageing, -- 标准时效
+       if(ordertype = '小包清+派',COALESCE(signedtime,endtime,cancelledtime) - arrival,COALESCE(signedtime,endtime,cancelledtime) - createtime)/1000/3600/24 as whole_ageing,-- 全程时效
+       from_unixtime(createtime/1000, '%Y-%m-%d %H:%i:%s') as createtime, -- 下单时间
+       from_unixtime(orderfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as orderfallinventorytime, -- 下单落库时间
+       from_unixtime(orderpickup/1000, '%Y-%m-%d %H:%i:%s') as orderpickup, -- 揽收时间
+       from_unixtime(pickupfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as pickupfallinventorytime, -- 揽收落库时间
+       from_unixtime(cninboundtime/1000, '%Y-%m-%d %H:%i:%s') as cninboundtime, -- 华南入库时间
+       from_unixtime(cninfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as cninfallinventorytime, -- 华南入库落库时间
+       from_unixtime(cnoutboundtime/1000, '%Y-%m-%d %H:%i:%s') as cnoutboundtime, -- 出库时间
+       from_unixtime(cnoutfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as cnoutfallinventorytime, -- 出库落库时间
+       from_unixtime(customstime/1000, '%Y-%m-%d %H:%i:%s') as customstime, -- 国内报关时间
+       from_unixtime(customsfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as customsfallinventorytime, -- 国内报关落库时间
+       from_unixtime(ordergiveairline/1000, '%Y-%m-%d %H:%i:%s') as ordergiveairline, -- 交航时间
+       from_unixtime(givefallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as givefallinventorytime, -- 交航落库时间
+       from_unixtime(airlinefly/1000, '%Y-%m-%d %H:%i:%s') as airlinefly, -- 航班起飞时间
+       from_unixtime(flyfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as flyfallinventorytime, -- 航班起飞落库时间
+       from_unixtime(arrival/1000, '%Y-%m-%d %H:%i:%s') as arrival, -- 航班到达时间
+       from_unixtime(arrivalfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as arrivalfallinventorytime, -- 航班到达落库时间
+       from_unixtime(clearancedetain/1000, '%Y-%m-%d %H:%i:%s') as clearancedetain, -- 清关扣件时间
+       from_unixtime(detainfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as detainfallinventorytime, -- 清关扣件落库时间
+       from_unixtime(clearfinishtime/1000, '%Y-%m-%d %H:%i:%s') as clearfinishtime, -- 清关完成时间
+       from_unixtime(clearfinishfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as clearfinishfallinventorytime, -- 清关完成落库时间
+       from_unixtime(cleardelivery/1000, '%Y-%m-%d %H:%i:%s') as cleardelivery, -- 清关提货
+       from_unixtime(cleardeliveryfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as cleardeliveryfallinventorytime, -- 清关提货落库时间
+       from_unixtime(clearancepay/1000, '%Y-%m-%d %H:%i:%s') as clearancepay, -- 清关交付
+       from_unixtime(clearpayfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as clearpayfallinventorytime, -- 清关交付落库时间
+       from_unixtime(terminaldelivery/1000, '%Y-%m-%d %H:%i:%s') as terminaldelivery, -- 尾程物流商提货时间
+       from_unixtime(terminaldeliveryfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as terminaldeliveryfallinventorytime, -- 尾程物流商提货落库时间
+       from_unixtime(terminaltransit/1000, '%Y-%m-%d %H:%i:%s') as terminaltransit, -- 尾程揽收时间
+       from_unixtime(terminaltransitfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as terminaltransitfallinventorytime, -- 尾程揽收落库时间
+       from_unixtime(terminalreceive/1000, '%Y-%m-%d %H:%i:%s') as terminalreceive, -- 到达尾程派送点时间
+       from_unixtime(terminalreceivefallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as terminalreceivefallinventorytime, -- 到达尾程派送点落库时间
+       from_unixtime(trytime/1000, '%Y-%m-%d %H:%i:%s') as trytime, -- 尝试派送时间
+       from_unixtime(tryfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as tryfallinventorytime, -- 尝试派送落库时间
+       from_unixtime(signedtime/1000, '%Y-%m-%d %H:%i:%s') as signedtime, -- 签收时间
+       from_unixtime(signedfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as signedfallinventorytime, -- 签收落库时间
+       from_unixtime(cancelledtime/1000, '%Y-%m-%d %H:%i:%s') as cancelledtime, -- 取消时间
+       from_unixtime(cancelledfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as cancelledfallinventorytime, -- 取消落库时间
+       from_unixtime(endtime/1000, '%Y-%m-%d %H:%i:%s') as endtime, -- 关单时间
+       from_unixtime(endfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as endfallinventorytime, -- 关单落库时间
+       from_unixtime(taxpaidtime/1000, '%Y-%m-%d %H:%i:%s') as taxpaidtime, -- 付税时间
+       from_unixtime(taxpaidfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as taxpaidfallinventorytime, -- 付税落库时间
+       from_unixtime(damagedtime/1000, '%Y-%m-%d %H:%i:%s') as damagedtime, -- 破损件时间
+       from_unixtime(damagedfallinventorytime/1000, '%Y-%m-%d %H:%i:%s') as damagedfallinventorytime, -- 破损件落库时间
+       from_unixtime(dcreceivereturntime/1000, '%Y-%m-%d %H:%i:%s') as dcreceivereturntime, -- 仓库收到退货时间
+       from_unixtime(returnqualitytesttime/1000, '%Y-%m-%d %H:%i:%s') as returnqualitytesttime -- 退货质检时间
+FROM `dwd`.`dwd_express_node_monitor_hi`
