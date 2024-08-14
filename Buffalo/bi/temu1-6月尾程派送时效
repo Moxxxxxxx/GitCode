@@ -1,0 +1,97 @@
+with t1 as (
+select a.*,ec.name as expresscompanyname,b.province from 
+(
+select e.id,e.expresscompanyid, from_unixtime(if(b.line = 1,b.firstarrivaltimereal ,b.secondarrivaltimereal)/1000,'%Y-%m-%d') sreadl,e.clientid,e.receivecity ,e.receivepostcode,e.receivesuburb
+,if(ea.signedtime = 0,-1, ROUND((ea.signedtime - 6 * 60 * 60 * 1000 -(if(ea.taxpaidtime - etr.inboundtime >0,ea.taxpaidtime - etr.inboundtime,0))- if(b.secondarrivaltimereal=0,b.firstarrivaltimereal,b.secondarrivaltimereal))/(24*60*60*1000),1)) d,b.blnumber,e.sendcompany
+,row_number() over(partition by e.id order by etr.inboundtime) as rn
+from buffaloex2.express e
+left join buffaloex2.blnumber b on e.blnumber = b.blnumber
+left join buffaloex2.expressaging ea on e.id = ea.expressid
+left join buffaloex_delivery.express e2 on e.expressnumber = e2.expressnumber
+left join buffaloex_delivery.expresstimerecord etr on e2.id = etr.expressid and etr.inboundtime > 0
+where from_unixtime(if(b.line = 1,b.firstarrivaltimereal ,b.secondarrivaltimereal)/1000,'%Y-%m-%d') >= '2024-01-01'
+and from_unixtime(if(b.line = 1,b.firstarrivaltimereal ,b.secondarrivaltimereal)/1000,'%Y-%m-%d') <= '2024-04-22'
+and e.clientid = 2689675408624712  
+and b.firstarrivaltimereal >= 0 
+and b.secondarrivaltimereal >= 0
+
+union all
+
+select e.id,e.expresscompanyid,from_unixtime(if(b.line = 1,b.firstarrivaltimereal ,b.secondarrivaltimereal)/1000,'%Y-%m-%d') sreadl,e.clientid,e.receivecity ,e.receivepostcode,e.receivesuburb
+,if(ea.signedtime = 0,-1, ROUND((ea.signedtime - 6 * 60 * 60 * 1000 -(if(ea.taxpaidtime - ea.zainboundtime >0,ea.taxpaidtime - ea.zainboundtime,0))-  if(b.secondarrivaltimereal=0,b.firstarrivaltimereal,b.secondarrivaltimereal))/(24*60*60*1000),1)) d,b.blnumber,
+e.sendcompany,
+row_number() over(partition by e.id order by etr.inboundtime) as rn
+from buffaloex2.express e
+left join buffaloex2.blnumber b on e.blnumber = b.blnumber
+left join buffaloex2.expressaging ea on e.id = ea.expressid
+left join buffaloex_delivery.express e2 on e.expressnumber = e2.expressnumber
+left join buffaloex_delivery.expresstimerecord etr on e2.id = etr.expressid and etr.inboundtime > 0
+where from_unixtime(if(b.line = 1,b.firstarrivaltimereal ,b.secondarrivaltimereal)/1000,'%Y-%m-%d') >= '2024-04-22'
+and e.clientid = 2689675408624712  
+and b.firstarrivaltimereal >= 0 
+and b.secondarrivaltimereal >= 0) a
+left join buffaloex_delivery.expresscompany ec on ec.id = a.expresscompanyid
+left join (select city, postcode, suburb, province from ads.ads_address_info_d group by city, postcode, suburb, province) b on lower(a.receivecity) = lower(b.city) and a.receivepostcode = b.postcode and lower(a.receivesuburb) = lower(b.suburb)
+where a.rn =1
+and sreadl >='2024-01-01' and sreadl <='2024-06-24'
+),
+t2 as (
+SELECT sreadl,d,expresscompanyname,province,count(id) as cnt,
+       case when d=-1 then count(id) else 0 end as '未入库',
+       IF ((d > 0 and d <= 1) or d < -1,count(id),0) as  '1D达成率',
+                         IF ((d > 0 and d <= 2) or d < -1,count(id),0) as  '2D达成率',
+                         IF ((d > 0 and d <= 3) or d < -1,count(id),0) as  '3D达成率',
+                         IF ((d > 0 and d <= 4) or d < -1,count(id),0) as  '4D达成率',
+                         IF ((d > 0 and d <= 5) or d < -1,count(id),0) as  '5D达成率',
+                         IF ((d > 0 and d <= 6) or d < -1,count(id),0) as  '6D达成率',
+                         IF ((d > 0 and d <= 7) or d < -1,count(id),0) as  '7D达成率',
+                         IF ((d > 0 and d <= 8) or d < -1,count(id),0) as  '8D达成率',
+                         IF ((d > 0 and d <= 9) or d < -1,count(id),0) as  '9D达成率',
+                         IF ((d > 0 and d <= 10) or d < -1,count(id),0) as  '10D达成率',
+                         IF ((d > 0 and d <= 11) or d < -1,count(id),0) as  '11D达成率',
+                         IF ((d > 0 and d <= 12) or d < -1,count(id),0) as  '12D达成率',
+                         IF ((d > 0 and d <= 13) or d < -1,count(id),0) as  '13D达成率',
+                         IF ((d > 0 and d <= 14) or d < -1,count(id),0) as  '14D达成率',
+                         IF ((d > 0 and d <= 15) or d < -1,count(id),0) as  '15D达成率',
+                         IF ((d > 0 and d <= 16) or d < -1,count(id),0) as  '16D达成率',
+                         IF ((d > 0 and d <= 17) or d < -1,count(id),0) as  '17D达成率',
+                         IF ((d > 0 and d <= 18) or d < -1,count(id),0) as  '18D达成率',
+                         IF ((d > 0 and d <= 19) or d < -1,count(id),0) as  '19D达成率',
+                         IF ((d > 0 and d <= 20) or d < -1,count(id),0) as  '20D达成率',
+                         IF ((d > 0 and d <= 25) or d < -1,count(id),0) as  '25D达成率',
+                         IF ((d > 0 and d <= 30) or d < -1,count(id),0) as  '30D达成率',
+                         IF ((d > 30) or d < -1,count(id),0) as  '30D以上达成率'
+FROM t1
+GROUP BY sreadl,d,expresscompanyname,province
+)
+
+select sreadl as '运抵目的国时间',
+           province,
+       sum(cnt) as '包裹数量',
+       sum(`未入库`) as '未签收',
+       sum(`1D达成率`),
+                         sum(`2D达成率`),
+                         sum(`3D达成率`),
+                         sum(`4D达成率`),
+                         sum(`5D达成率`),
+                         sum(`6D达成率`),
+                         sum(`7D达成率`),
+                         sum(`8D达成率`),
+                         sum(`9D达成率`),
+                         sum(`10D达成率`),
+                         sum(`11D达成率`),
+                         sum(`12D达成率`),
+                         sum(`13D达成率`),
+                         sum(`14D达成率`),
+                         sum(`15D达成率`),
+                         sum(`16D达成率`),
+                         sum(`17D达成率`),
+                         sum(`18D达成率`),
+                         sum(`19D达成率`),
+                         sum(`20D达成率`),
+                         sum(`25D达成率`),
+                         sum(`30D达成率`),
+                         sum(`30D以上达成率`)
+FROM t2
+GROUP BY sreadl,province
+order by sreadl
