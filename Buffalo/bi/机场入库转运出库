@@ -1,0 +1,76 @@
+with dayhour as
+(
+  select * 
+  from 
+  (
+    SELECT DATE_ADD('2024-01-01', INTERVAL (n-1) DAY) AS date_sequence
+    FROM 
+		(
+      SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+      FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+    ) numbers
+    WHERE DATE_ADD('2024-01-01', INTERVAL (n-1) DAY) <= CURRENT_DATE()   
+    ORDER BY date_sequence
+  )t
+  JOIN
+  (
+	  SELECT '00' AS i UNION SELECT '01' UNION SELECT '02' UNION SELECT '03'
+    UNION SELECT '04' UNION SELECT '05' UNION SELECT '06' UNION SELECT '07'
+    UNION SELECT '08' UNION SELECT '09' UNION SELECT '10' UNION SELECT '11' 
+    UNION SELECT '12' UNION SELECT '13' UNION SELECT '14' UNION SELECT '15'
+    UNION SELECT '16' UNION SELECT '17' UNION SELECT '18' UNION SELECT '19' 
+    UNION SELECT '20' UNION SELECT '21' UNION SELECT '22' UNION SELECT '23'
+  )hours
+)
+
+SELECT t.time,
+       a.inboundqty, -- 机场仓入库数量
+			 b.transitqty, -- 机场仓转运数量
+			 c.outboundqty -- 机场仓出库数量
+from
+(
+  SELECT CONCAT(date_sequence, ' ', i) AS time
+  FROM dayhour
+)t
+left join 
+(
+  select count(1) as inboundqty,
+	       if(er.displaytime like '%GMT+8%',
+				    DATE_FORMAT(DATE_ADD(substring(er.displaytime,1,13),INTERVAL -6 hour),'%Y-%m-%d %H'),
+						DATE_FORMAT(substring(er.displaytime,1,13),'%Y-%m-%d %H')) as time
+  from buffaloex2.express e
+  left join buffaloex2.expressrecord er 
+	on e.id = er.expressid 
+  where er.content LIKE '%BUFFALO Airport Warehouse received%' and e.status < 90 
+  group by if(er.displaytime like '%GMT+8%',
+				   DATE_FORMAT(DATE_ADD(substring(er.displaytime,1,13),INTERVAL -6 hour),'%Y-%m-%d %H'),
+					 DATE_FORMAT(substring(er.displaytime,1,13),'%Y-%m-%d %H'))
+) a 
+on t.time =  a.time
+left join 
+(
+  select count(1) as transitqty,
+	      if(er.displaytime like '%GMT+8%',
+	         DATE_FORMAT(DATE_ADD(substring(er.displaytime,1,13),INTERVAL -6 hour),'%Y-%m-%d %H'),
+           DATE_FORMAT(substring(er.displaytime,1,13),'%Y-%m-%d %H')) as time
+  from buffaloex2.express e
+  left join buffaloex2.expressoperationrecord er on e.id = er.expressid 
+  where er.content LIKE '%Pack completed in%'
+    and er.module LIKE '%Airport App>>Transit Pack%'
+		and e.status < 90 
+  group by if(er.displaytime like '%GMT+8%',
+	         DATE_FORMAT(DATE_ADD(substring(er.displaytime,1,13),INTERVAL -6 hour),'%Y-%m-%d %H'),
+           DATE_FORMAT(substring(er.displaytime,1,13),'%Y-%m-%d %H'))
+) b 
+on t.time =  b.time
+left join 
+(
+  select count(1) as outboundqty,
+	       FROM_UNIXTIME(airportoutboundtime/1000-6 * 60 * 60 ,'%Y-%m-%d %H') as time
+  from buffaloex2.express e,buffaloex2.expressaging a
+  where e.id=a.expressid and e.status < 90 	
+  group by FROM_UNIXTIME(airportoutboundtime/1000-6 * 60 * 60 ,'%Y-%m-%d %H')
+) c 
+on t.time =  c.time
