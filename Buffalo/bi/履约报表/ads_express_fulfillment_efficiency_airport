@@ -1,0 +1,195 @@
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+TRUNCATE TABLE `ads`.`ads_express_fulfillment_efficiency_airport`
+INSERT INTO `ads`.`ads_express_fulfillment_efficiency_airport` 
+WITH t1 AS 
+(
+  SELECT b.blnumber, -- 提单号
+         b.totalnumber, -- 订单数量
+         b.collecttime as air_collecttime, -- 机场取件时间戳
+         date(from_unixtime(b.collecttime/1000)) as collect_day,  -- 机场取件日期 
+         if(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal) as arrivaltime, -- 机场实际到达时间戳（最早）
+         f.last_arrivaltime, -- 机场实际到达时间戳（最晚）
+         (case when b.collecttime > 0 then (b.collecttime - if(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal))/1000/3600 end) as air_span_hours, -- 机场取件-机场到达（最早）
+         (case when b.collecttime > 0 then (b.collecttime - f.last_arrivaltime)/1000/3600 end) as last_air_span_hours, -- 机场取件-机场到达（最晚）
+         from_unixtime(if(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal)/1000, '%Y-%m-%d %H:%i:%s') as air_arrivaltime, -- 机场实际到达时间（最早）
+         from_unixtime(f.last_arrivaltime/1000, '%Y-%m-%d %H:%i:%s') as last_air_arrivaltime, -- 机场实际到达时间（最晚）
+         b.operabletime, -- 可操作时间（清关+付税率≥50%）
+         IF(if(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal) = f.last_arrivaltime,0,1) as is_much_flight -- 是否为多批次航班（0：不是，1：是）
+  FROM buffaloex2.blnumber b
+  LEFT JOIN
+  (
+    SELECT blnumber,  -- 提单号
+           if(line = 1,firstarrivaltimereal,secondarrivaltimereal) as last_arrivaltime, -- 机场实际到达时间戳
+		   row_number()over(partition by blnumber order by arrivaltime desc) as rn -- 按提单号分组 按到达时间排序 取最晚
+    FROM buffaloex2.flightdetail
+	WHERE if(line = 1,firstarrivaltimereal,secondarrivaltimereal) > 0
+  )f
+  ON b.blnumber = f.blnumber
+  WHERE f.rn = 1 AND b.collecttime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 100 DAY, '%Y-%m-%d'))) * 1000 -- #100天前日期
+), 
+t2 AS 
+(
+  SELECT e.expressnumber, -- 订单号
+         e.status, -- 订单状态
+         e.blnumber,  -- 提单号
+         CASE WHEN e.expresscompanyid = 3 THEN 'buffalo'
+              WHEN e.expresscompanyid = 2 THEN 'fastway'
+              WHEN e.expresscompanyid = 2266452665457878 THEN 'itt'
+              WHEN e.expresscompanyid = 7 THEN 'paxi'
+              WHEN e.expresscompanyid = 8 THEN 'skynet'
+              WHEN e.expresscompanyid = 2590541559123122 THEN 'dpdlaser'
+              WHEN e.expresscompanyid = 14 THEN 'Client Collect'
+           ELSE '' END as company, -- 第三方快递公司
+         e.africareceivetime, -- 机场入库时间戳
+         e2.airportoutboundtime,  -- 机场出库时间戳
+         e2.signedtime, -- 签收时间
+         CASE WHEN e.status = 5 THEN 'Order Exception'
+	          WHEN e.status = 8 THEN 'Waiting for payment'
+	          WHEN e.status = 10 THEN 'Order Confirmed'
+	          WHEN e.status = 20 THEN 'CN Inbound'
+	          WHEN e.status = 21 THEN 'CN Outbound'
+              WHEN e.status = 23 THEN 'Warehouse transfer'
+              WHEN e.status = 30 THEN 'CN Declared-Awaiting departure confirmation'
+              WHEN e.status = 40 THEN 'International Shipping'
+	          WHEN e.status = 50 THEN 'Arrival at South Africa customs'
+	          WHEN e.status = 67 THEN 'Scanned in at SA warehouse'
+	          WHEN e.status = 68 THEN 'Picking...-拣货中'
+	          WHEN e.status = 69 THEN 'Packaging complete'
+	          WHEN e.status = 70 THEN 'Dispatching...-目的国落地配送中'
+	          WHEN e.status = 73 THEN 'In the transit'
+	          WHEN e.status = 80 THEN 'Client Received'
+	          WHEN e.status = 90 THEN 'Cancel-取消'
+	          WHEN e.status = 100 THEN 'Shout out-关单'
+         END as admin_status,  -- 订单状态（中文映射）
+         CASE WHEN e.clientid IN (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303) THEN 'SHEIN'
+		      WHEN e.clientid IN (2689675408624712) THEN 'TEMU'
+		 ELSE 'ELSE' END as customer_name, -- 客户名称
+         e.receivecity as city, -- 城市
+		 e.receivepostcode as postcode, -- 邮编
+		 e.receivesuburb as suburb, -- 县区
+		 GREATEST(e2.zainboundtime,e2.taxpaidtime,e2.clearancefinishtime) as intaxclearanceytime, -- 已入库已付税已清关时间戳
+         e2.taxpaidtime -- 付税时间戳
+  FROM buffaloex2.express e 
+  INNER JOIN buffaloex2.blnumber b 
+  ON e.blnumber  = b.blnumber 
+  JOIN buffaloex2.expressaging e2
+  ON e2.expressid = e.id 
+  LEFT JOIN buffaloex2.customer c 
+  ON e.clientid = c.userid
+  WHERE e.status != 90
+    AND if(b.line = 1,b.firstarrivaltimereal ,b.secondarrivaltimereal) > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 100 DAY, '%Y-%m-%d'))) * 1000 -- #100天前日期
+),
+r1 AS 
+(
+  SELECT e.expressnumber, -- 订单号
+         from_unixtime(if(if(t.inboundtime > 0,t.inboundtime,t.cantransittime) / 1000 - 6 * 3600 > 0,if(t.inboundtime > 0,t.inboundtime,t.cantransittime) / 1000 - 6 * 3600,0), '%Y-%m-%d %H:%i:%s') as inboundtime, -- 南非仓入库时间
+		 if(t.inboundtime > 0,t.inboundtime,t.cantransittime) as inboundtime_ts -- 南非仓入库时间戳
+  FROM buffaloex_delivery.expresstimerecord t
+  LEFT JOIN buffaloex_delivery.express e 
+  ON t.expressid =e.id
+  WHERE t.hubid = 823519816802652
+    AND e.sendstatus < 80
+    AND (t.outboundtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 OR t.transittime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000) -- #90天前日期
+)
+  
+SELECT res1.expressnumber, -- 订单号
+       res1.blnumber, -- 提单号
+       res1.customer_name, -- 客户名称
+       res1.company, -- 快递公司
+       res1.city, -- 收件人城市
+       res1.postcode, -- 收件人邮编
+       res1.suburb, -- 收件人区域
+       res3.province, -- 省份
+       res1.status, -- admin订单状态
+       res1.admin_status, -- admin订单状态（中文映射）
+       res1.air_arrivaltime, -- 机场到达时间（最早）
+       res1.last_air_arrivaltime, -- 机场到达时间（最晚）
+       res1.air_pickup,	-- 机场取件时间
+       res1.air_entersiteabletime, -- 可操作时间      
+       res1.intaxclearanceytime, -- 已入库已付税已清关时间
+       res1.operabletime, -- 清关+付税率≥50%时间
+       res1.air_inbound, -- 机场入库时间
+       res1.air_outbound, -- 机场出库时间
+       res1.airportoutboundtime,  -- 机场出库时间戳
+       res1.signdate, -- 签收时间
+       res1.signedtime, -- 签收时间戳
+       res1.air_arrivaltime_sign, -- 机场到达（最早）-派送成功
+       res1.last_air_arrivaltime_sign, -- 机场到达（最晚）-派送成功
+       res1.air_span_hours, -- 机场到达（最早）-机场取件
+       res1.last_air_span_hours, -- 机场到达（最晚）-机场取件
+       res1.air_arrivaltime_inbound, -- 机场到达（最早）-机场入库
+       res1.last_air_arrivaltime_inbound, -- 机场到达（最晚）-机场入库
+       res1.air_inbound_taxpaid, -- 机场入库-付税
+       res1.air_receivetime_inbound, -- 机场取件-机场入库
+       res1.air_entersiteabletime_inbound, -- 可操作-机场入库
+       res1.air_inbound_outbound,  -- 机场入库-机场出库
+       res1.air_inbound_sign, -- 机场入库-派送成功
+       res1.air_inbound_outbound_new, -- 可操作-机场出库
+       res1.air_receivetime_inbound_new, -- 可操作-机场入库
+       res1.is_taxpaid, -- 是否付税
+       res1.is_much_flight, -- 是否多批次航班
+       res1.createtime, -- 数据生成创建时间
+       res2.jhb_dc_inboundtime, -- 南非入库时间
+       (res2.inboundtime_ts  - res1.airportoutboundtime) / 1000 / 3600 as air_out_jhb_in -- 机场出库-南非入库
+FROM 
+(
+  SELECT b.expressnumber, -- 订单号
+         a.blnumber, -- 提单号
+         b.admin_status, -- admin订单状态（中文映射）
+         IF(b.company is null or length(b.company) = 0,null,b.company) as company, -- 快递公司
+         a.air_arrivaltime, -- 机场到达时间（最早）
+         from_unixtime(a.air_collecttime / 1000, '%Y-%m-%d %H:%i:%s') as air_pickup, -- 机场取件时间
+         from_unixtime(b.africareceivetime / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as air_inbound, -- 机场入库时间
+         from_unixtime(b.airportoutboundtime / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as air_outbound, -- 机场出库时间
+         from_unixtime(IF((b.signedtime / 1000 - 6 * 3600) > 0,b.signedtime / 1000 - 6 * 3600,0), '%Y-%m-%d %H:%i:%s') as signdate, -- 签收时间
+         b.signedtime, -- 签收时间戳
+         (b.signedtime - a.arrivaltime) / 1000 / 3600 - 6 as air_arrivaltime_sign, -- 机场到达（最早）-签收
+         a.air_span_hours, -- 机场取件-机场到达（最早）
+         (b.africareceivetime - a.air_collecttime) / 1000 / 3600 - 6 as air_receivetime_inbound, -- 机场取件-机场入库
+         CASE WHEN (b.airportoutboundtime > 0 AND b.airportoutboundtime > b.africareceivetime) THEN (b.airportoutboundtime - b.africareceivetime) / 1000 / 3600
+              WHEN (b.airportoutboundtime > 0 AND b.airportoutboundtime < b.africareceivetime) THEN 0
+         END as air_inbound_outbound, -- 机场入库-机场出库
+         b.airportoutboundtime, -- 机场出库时间戳
+         from_unixtime(a.operabletime / 1000 - 3600 * 6, '%Y-%m-%d %H:%i:%s') as air_entersiteabletime, -- 可操作时间
+         if(b.africareceivetime < a.operabletime,0,(b.africareceivetime - a.operabletime) / 1000 / 3600) as air_entersiteabletime_inbound, -- 可操作-机场入库
+         b.customer_name, -- 客户名称
+         b.city, -- 城市
+         b.postcode, -- 邮编
+         b.suburb, -- 县区
+         -- 机场入库->机场出库
+         from_unixtime(IF(b.intaxclearanceytime < b.africareceivetime,b.africareceivetime,b.intaxclearanceytime) / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as intaxclearanceytime, -- 已入库已付税已清关时间
+         CASE WHEN (b.airportoutboundtime > 0 AND b.airportoutboundtime > b.africareceivetime AND b.intaxclearanceytime < b.africareceivetime) THEN (b.airportoutboundtime - b.africareceivetime) / 1000 / 3600
+	          WHEN (b.airportoutboundtime > 0 AND b.airportoutboundtime > b.africareceivetime AND b.intaxclearanceytime >= b.africareceivetime) THEN (b.airportoutboundtime - b.intaxclearanceytime) / 1000 / 3600
+              WHEN (b.airportoutboundtime > 0 AND b.airportoutboundtime < b.africareceivetime) THEN 0
+         END as air_inbound_outbound_new, -- 已入库已付税已清关-出库（机场入库-机场出库）
+         -- 机场取件->机场入库
+         IF(from_unixtime(a.operabletime / 1000 - 3600 * 6,'%Y-%m-%d %H:%i:%s') < from_unixtime(a.air_collecttime / 1000, '%Y-%m-%d %H:%i:%s'),from_unixtime(a.air_collecttime / 1000, '%Y-%m-%d %H:%i:%s'),from_unixtime(a.operabletime / 1000 - 3600 * 6,'%Y-%m-%d %H:%i:%s')) as operabletime, -- 取件时间（新）
+         IF((b.africareceivetime / 1000 - 3600 * 6 -IF(a.operabletime / 1000 - 3600 * 6 < a.air_collecttime / 1000,a.air_collecttime / 1000,a.operabletime / 1000 - 3600 * 6)) / 3600 < 0,0,(b.africareceivetime / 1000 - 3600 * 6 -IF(a.operabletime / 1000 - 3600 * 6 < a.air_collecttime / 1000,a.air_collecttime / 1000,a.operabletime / 1000 - 3600 * 6)) / 3600) as air_receivetime_inbound_new, -- 机场取件-机场入库（新）
+         -- 机场到达->机场入库
+         (b.africareceivetime - a.arrivaltime) / 1000 / 3600 - 6 as air_arrivaltime_inbound, -- 机场到达-机场入库
+         -- 机场入库->派送成功
+         (b.signedtime - b.africareceivetime) / 1000 / 3600 as air_inbound_sign, -- 机场入库-派送成功
+         now() as createtime, -- 数据生成创建时间
+         if(b.taxpaidtime <= b.africareceivetime,1,0) as is_taxpaid, -- 是否付税
+         if(b.taxpaidtime <= b.africareceivetime,0,(b.taxpaidtime - b.africareceivetime) / 1000 / 3600) as air_inbound_taxpaid, -- 机场入库-付税
+         b.status, -- admin订单状态
+         a.last_air_arrivaltime, -- 机场到达时间（最晚）
+         a.last_air_span_hours, -- 机场取件-机场到达（最晚）
+         a.is_much_flight, -- 是否多批次航班
+         (b.signedtime - a.last_arrivaltime) / 1000 / 3600 - 6 as last_air_arrivaltime_sign, -- 机场到达（最晚）-签收
+         (b.africareceivetime - a.last_arrivaltime) / 1000 / 3600 - 6 as last_air_arrivaltime_inbound -- 机场到达（最晚）-机场入库
+  FROM t1 a 
+  LEFT JOIN t2 b 
+  ON a.blnumber = b.blnumber
+) res1
+LEFT JOIN 
+(
+  SELECT DISTINCT a.expressnumber, -- 订单号
+                  a.inboundtime_ts, -- 南非入库时间戳
+                  a.inboundtime as jhb_dc_inboundtime -- 南非入库时间
+  FROM r1 a
+) res2
+ON res1.expressnumber = res2.expressnumber
+LEFT JOIN `ads`.`ads_address_info_d` res3
+ON lower(res1.`city`) = lower(res3.`city`) AND lower(res1.`suburb`) = lower(res3.`suburb`) AND res1.`postcode` = res3.`postcode`
+WHERE res1.expressnumber IS NOT NULL;
