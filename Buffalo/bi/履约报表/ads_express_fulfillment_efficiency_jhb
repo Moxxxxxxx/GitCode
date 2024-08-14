@@ -1,0 +1,292 @@
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+TRUNCATE TABLE `ads`.`ads_express_fulfillment_efficiency_jhb`
+INSERT INTO `ads`.`ads_express_fulfillment_efficiency_jhb` 
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+WITH r1 AS 
+(
+  SELECT a.expressid, -- 订单id
+         a.expressnumber, -- 订单号
+         IF(a.company is null or length(a.company) = 0,null,a.company) as company, -- 快递公司
+         a.sendstatus, -- 派送状态
+         a.city, -- 城市
+		 a.postcode, -- 邮编
+		 a.suburb, -- 县区
+         a.customer_name, -- 客户名称
+         from_unixtime(if(a.inboundtime / 1000 - 6 * 3600 > 0,a.inboundtime / 1000 - 6 * 3600,0), '%Y-%m-%d %H:%i:%s') as inboundtime, -- 南非仓入库时间
+         a.inboundtime as inboundtime_ts, -- 南非仓入库时间戳
+         from_unixtime(if(a.finishtime / 1000 - 6 * 3600 > 0,a.finishtime / 1000 - 6 * 3600,0), '%Y-%m-%d %H:%i:%s') as finishtime, -- 派送成功时间
+         a.finishtime as finishtime_ts, -- 派送成功时间戳
+         a.returndate -- 退货时间
+  FROM 
+  (
+    SELECT a.expressid, -- 订单id
+           b.expressnumber, -- 订单号
+		   b.sendstatus, -- 派送状态
+           b.receivecity as city, -- 城市
+		   b.receivepostcode as postcode, -- 邮编
+		   b.receivesuburb as suburb, -- 县区
+		   CASE WHEN b.expresscompanyid = 3 THEN 'buffalo'
+                WHEN b.expresscompanyid = 2 THEN 'fastway'
+                WHEN b.expresscompanyid = 2266452665457878 THEN 'itt'
+                WHEN b.expresscompanyid = 7 THEN 'paxi'
+                WHEN b.expresscompanyid = 8 THEN 'skynet'
+                WHEN b.expresscompanyid = 2590541559123122 THEN 'dpdlaser'
+                WHEN b.expresscompanyid = 14 THEN 'Client Collect'
+           ELSE '' END as company, -- 第三方快递公司
+		   if(a.inboundtime > 0,a.inboundtime,a.cantransittime) as inboundtime, -- 南非仓入库时间戳
+           a.outboundtime, -- 南非仓出库时间戳
+           b.finishtime, -- 派送成功时间戳
+           CASE WHEN c.clientid IN (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303) THEN 'SHEIN'
+		        WHEN c.clientid IN (2689675408624712) THEN 'TEMU'
+		   ELSE 'ELSE' END as customer_name, -- 客户名称
+           b.returndate
+    FROM buffaloex_delivery.expresstimerecord a 
+	LEFT JOIN buffaloex_delivery.express b 
+    ON a.expressid = b.id
+    LEFT JOIN buffaloex2.express c
+    ON b.expressnumber = c.expressnumber
+    WHERE a.hubid = 823519816802652
+      AND b.sendstatus < 80
+	  AND (a.outboundtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 OR a.transittime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000) -- #90天前日期
+  )a
+), 
+-- 南非仓：快递员出库+快递员取件
+r2 AS 
+(
+  SELECT a.expressnumber, -- 订单号
+	     a.sendstatus, -- 派送状态
+	     a.expressid, -- 订单id
+         a.courier_outbound_time, -- 快递员出库时间戳
+	     b.courier_dispatch_time -- 快递员取件时间戳
+         ,a.content as courier_outbound_content,a.module as courier_outbound_module,a.hubid as courier_outbound_hubid
+         ,b.content as courier_dispatch_content,b.module as courier_dispatch_module,b.hubid as courier_dispatch_hubid
+  FROM
+  (
+    SELECT e.expressnumber, -- 订单号
+		   e.sendstatus, -- 派送状态
+		   e.id as expressid, -- 订单id
+           e2.createtime as courier_outbound_time, -- 快递员出库时间戳
+           row_number() over(partition by e.expressnumber order by e2.createtime asc) as rn
+           ,e2.content,e2.module,IF(e2.module not like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%',e2.hubid,e.hubid) as hubid
+    FROM buffaloex_delivery.express e 
+    JOIN 
+    (
+      SELECT e2.expressid,e2.createtime,e2.content,e2.module,e3.hubid
+      FROM buffaloex_delivery.expressrecord e2
+      JOIN buffaloex_delivery.outbounddeliveryorderdetail e3
+      ON e2.createtime = e3.createtime AND e2.expressid = e3.expressid AND e3.hubid = 823519816802652 -- 南非仓
+      WHERE e2.del = 0 AND e2.module like '%DC App>>Dispatch Pick%'
+      AND e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+        
+      UNION 
+        
+      SELECT expressid,createtime,content,module,null as hubid
+      FROM buffaloex_delivery.expressoperationrecord
+      WHERE module like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%'
+      AND createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+    )e2
+    ON e2.expressid = e.id 
+    WHERE e.sendstatus < 80
+      AND e.expresscompanyid not in (2590541559123122,2,2266452665457878,8,7,14) -- 排除第三方派送
+      AND IF(e2.module not like '%DC App>>Dispatch Pick>>Tomorrow Dispatch%',e2.hubid,e.hubid) = 823519816802652
+  )a 
+  LEFT JOIN 
+  (
+    SELECT DISTINCT e.expressnumber, -- 订单号
+		   e.sendstatus, -- 派送状态
+		   e.id as expressid, -- 订单id
+           e2.createtime as courier_dispatch_time, -- 快递员取件时间戳
+           DENSE_RANK () over(partition by e.expressnumber order by e2.createtime desc) as rn
+           ,e2.content,e2.module,e.hubid
+    FROM buffaloex_delivery.express e 
+    JOIN buffaloex_delivery.expressrecord e2 
+    ON e2.expressid = e.id AND e2.del = 0 AND e2.module like '%Courier App>>Dispatch Pick%'
+    WHERE e.sendstatus < 80
+      AND e.expresscompanyid not in (2590541559123122,2,2266452665457878,8,7,14) -- 排除第三方派送
+	  AND e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+      AND e.hubid = 823519816802652 -- 南非仓
+  )b
+  ON a.expressnumber = b.expressnumber AND a.rn = b.rn
+  WHERE a.rn = 1
+), 
+-- 南非仓：第三方出库+第三方取件
+r3 AS
+(
+  SELECT a.expressnumber, -- 订单号
+	     a.sendstatus, -- 派送状态
+	     a.expressid, -- 订单id
+         a.`3pl_outbound_time`, -- 第三方南非仓出库时间戳
+	     b.`3pl_dispatch_time` -- 第三方取件时间戳
+         ,a.content as 3pl_outbound_content,a.module as 3pl_outbound_module,a.hubid as 3pl_outbound_hubid
+         ,b.content as 3pl_dispatch_content,b.module as 3pl_dispatch_module,b.hubid as 3pl_dispatch_hubid
+ FROM
+  ( 
+    SELECT e.expressnumber, -- 订单号
+		   e.sendstatus, -- 派送状态
+		   e.id as expressid, -- 订单id
+           e2.createtime as 3pl_outbound_time, -- 第三方南非仓出库时间戳
+           row_number() over(partition by e.expressnumber order by e2.createtime asc) as rn
+           ,e2.content,e2.module,e3.hubid
+    FROM buffaloex_delivery.express e 
+    JOIN buffaloex_delivery.expressrecord e2 
+    ON e2.expressid = e.id AND e2.del = 0 AND (e2.module like '%DC App>>Bag Leave Site%' OR e2.module like '%DC App>>Leave Site%' OR e2.module like '%Robot&gt;&gt;Scanner(Sorting &amp; Leavesite)%' OR e2.module like '%Operation>>LeaveSite%' )
+    JOIN buffaloex_delivery.outbounddeliveryorderdetail e3
+    ON e2.createtime >= e3.createtime  AND e2.createtime <= e3.createtime + 1000 AND e2.expressid = e3.expressid AND e3.hubid = 823519816802652 -- 南非仓
+    WHERE e.sendstatus < 80
+      AND e.expresscompanyid not in (3,14) -- 排除buffalo派送\客户自提
+	  AND e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+  )a 
+  LEFT JOIN 
+  (
+    SELECT e.expressnumber, -- 订单号
+		   e.sendstatus, -- 派送状态
+		   e.id as expressid, -- 订单id
+           e2.createtime as 3pl_dispatch_time, -- 第三方取件时间戳
+           row_number() over(partition by e.expressnumber order by e2.createtime asc) as rn
+           ,e2.content,e2.module,e.hubid
+    FROM buffaloex_delivery.express e 
+    JOIN buffaloex_delivery.expressrecord e2 
+    ON e2.expressid = e.id AND e2.del = 0 AND ((e.expresscompanyid = 2590541559123122 AND e2.trackcode in ('9','10'))
+                                            OR (e.expresscompanyid = 2 AND e2.trackcode in ('PPP'))
+                                            OR (e.expresscompanyid = 2266452665457878 AND e2.trackcode in ('O','dhs','dht'))
+                                            OR (e.expresscompanyid = 8 AND e2.trackcode in ('564')))
+    WHERE e.sendstatus < 80
+      AND e.expresscompanyid not in (3,14) -- 排除buffalo派送\客户自提
+	  AND e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+      AND e.hubid = 823519816802652 -- 南非仓
+  )b 
+  ON a.expressnumber = b.expressnumber AND a.rn = b.rn
+  WHERE a.rn = 1
+), 
+-- 快递员出库+快递员取件
+r4 AS 
+(
+  SELECT b.expressnumber, -- 订单号
+	     b.sendstatus, -- 派送状态
+	     b.expressid, -- 订单id
+	     b.all_courier_dispatch_time -- 快递员取件时间戳
+  FROM
+  (
+    SELECT DISTINCT e.expressnumber, -- 订单号
+		   e.sendstatus, -- 派送状态
+		   e.id as expressid, -- 订单id
+           e2.createtime as all_courier_dispatch_time, -- 快递员取件时间戳
+           DENSE_RANK () over(partition by e.expressnumber order by e2.createtime desc) as rn
+    FROM buffaloex_delivery.express e 
+    JOIN buffaloex_delivery.expressrecord e2 
+    ON e2.expressid = e.id AND e2.del = 0 AND e2.module like '%Courier App>>Dispatch Pick%'
+    WHERE e.sendstatus < 80
+      AND e.expresscompanyid not in (2590541559123122,2,2266452665457878,8,7,14) -- 排除第三方派送
+	  AND e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+  )b
+  WHERE b.rn = 1 
+), 
+-- 第三方出库+第三方取件
+r5 AS
+(
+  SELECT b.expressnumber, -- 订单号
+	     b.sendstatus, -- 派送状态
+	     b.expressid, -- 订单id
+	     b.all_3pl_dispatch_time -- 第三方取件时间戳
+ FROM
+  (
+    SELECT e.expressnumber, -- 订单号
+		   e.sendstatus, -- 派送状态
+		   e.id as expressid, -- 订单id
+           e2.createtime as all_3pl_dispatch_time, -- 第三方取件时间戳
+           row_number() over(partition by e.expressnumber order by e2.createtime asc) as rn
+    FROM buffaloex_delivery.express e 
+    JOIN buffaloex_delivery.expressrecord e2 
+    ON e2.expressid = e.id AND e2.del = 0 AND ((e.expresscompanyid = 2590541559123122 AND e2.trackcode in ('9','10'))
+                                            OR (e.expresscompanyid = 2 AND e2.trackcode in ('PPP'))
+                                            OR (e.expresscompanyid = 2266452665457878 AND e2.trackcode in ('O','dhs','dht'))
+                                            OR (e.expresscompanyid = 8 AND e2.trackcode in ('564')))
+    WHERE e.sendstatus < 80
+      AND e.expresscompanyid not in (3,14) -- 排除buffalo派送\客户自提
+	  AND e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- 90天前日期
+  )b 
+  WHERE b.rn = 1
+)
+
+SELECT res2.expressnumber, -- 订单号
+       res2.customer_name, -- 客户名称
+       res2.city, -- 收件人城市
+       res2.postcode, -- 收件人邮编
+       res2.suburb, -- 收件人区域
+       res3.province, -- 省份
+       res2.company, -- 快递公司
+       res2.sendstatus, -- delivery订单状态
+       res2.delivery_status, -- delivery订单状态（中文映射）
+       res2.jhb_dc_inboundtime, -- 南非入库时间
+       res2.jhb_dc_outboundtime, -- 南非出库时间
+       res2.fi_ou_span_hours, -- JHB DC 出库-派送完成
+       res2.jhb_Driver_outboundtime, -- 快递员南非出库时间
+       res2.courier_pickup_time, -- 快递员取件时间
+       res2.all_courier_pickup_time, -- 所有快递员取件时间
+       res2.in_Driver_span_hours, -- 南非入库-快递员出库
+       res2.courier_dispatch, -- 快递员取件-派送成功
+       res2.jhb_3PL_outboundtime, -- 3pl出库时间
+       res2.in_3PL_span_hours, -- 南非入库-3pl出库
+       res2.courier_pl_pickup_time, -- 南非3pl取件时间
+       res2.all_courier_pl_pickup_time, -- 所有3pl取件时间
+       res2.courier_pl_pickup, -- 3pl出库-3pl取件
+       res2.courier_pl_dispatch, -- 3pl取件-派送成功
+       res2.finishtime -- 派送成功时间
+FROM 
+(
+  SELECT DISTINCT a.expressnumber, -- 订单号
+                  a.expressid, -- 订单id
+                  a.company, -- 快递公司
+                  a.city, -- 城市
+		          a.postcode, -- 邮编
+		          a.suburb, -- 县区
+                  a.customer_name, -- 客户名称
+                  a.inboundtime_ts, -- 南非入库时间戳
+                  a.inboundtime as jhb_dc_inboundtime, -- 南非入库时间
+                  from_unixtime(GREATEST(ifnull(b.courier_outbound_time,0),ifnull(c.`3pl_outbound_time`,0)) / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as jhb_dc_outboundtime, -- 南非仓出库时间
+                  (a.finishtime_ts - GREATEST(ifnull(b.courier_outbound_time,0),ifnull(c.`3pl_outbound_time`,0))) / 1000 / 3600 as fi_ou_span_hours, -- 南非出库-派送成功
+                  from_unixtime(b.courier_outbound_time / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as jhb_Driver_outboundtime, -- 快递员南非出库时间
+                  (b.courier_outbound_time - a.inboundtime_ts) / 1000 / 3600 as in_Driver_span_hours, -- 南非入库-快递员出库
+                  from_unixtime(b.courier_dispatch_time / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as courier_pickup_time, -- 南非仓快递员取件时间
+                  from_unixtime(d.all_courier_dispatch_time / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as all_courier_pickup_time, -- 所有快递员取件时间
+                  (a.finishtime_ts - d.all_courier_dispatch_time) / 1000 / 3600 as courier_dispatch, -- 快递员取件-派送成功
+                  from_unixtime(c.`3pl_outbound_time` / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as jhb_3PL_outboundtime, -- 3pl出库时间
+                  IF(a.returndate between a.inboundtime_ts and c.`3pl_outbound_time`,null,(c.`3pl_outbound_time` - a.inboundtime_ts) / 1000 / 3600) as in_3PL_span_hours, -- 南非入库-3pl出库
+                  from_unixtime(c.`3pl_dispatch_time` / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as courier_pl_pickup_time, -- 南非仓3pl取件时间
+                  IF(a.returndate between c.`3pl_outbound_time` and c.`3pl_dispatch_time`,null,(c.`3pl_dispatch_time` - c.`3pl_outbound_time`) / 1000 / 3600) as courier_pl_pickup, -- 3pl出库-3pl取件
+                  from_unixtime(e.all_3pl_dispatch_time / 1000 - 6 * 3600, '%Y-%m-%d %H:%i:%s') as all_courier_pl_pickup_time, -- 所有3pl取件时间
+                  (a.finishtime_ts - e.all_3pl_dispatch_time) / 1000 / 3600 as courier_pl_dispatch, -- 3pl取件-派送成功
+                  a.finishtime, -- 派送成功时间
+                  a.sendstatus,
+                  CASE a.sendstatus WHEN -3 THEN 'Tax Unpaid and not committed Inbound'
+	                                WHEN -2 THEN 'Tax Unpaid and not committed Confirmed'
+	                                WHEN 1 THEN 'Unpaid Confirmed'
+	                                WHEN 2 THEN 'Not Committed Confirmed'
+	                                WHEN 3 THEN 'Not Committed Inbound'
+	                                WHEN 5 THEN 'Order Confirmed-下单成功'
+	                                WHEN 13 THEN 'Pick Complete-已取件'
+	                                WHEN 17 THEN 'Pack Complete-打包完成'
+	                                WHEN 20 THEN 'In the Transit-转运中'
+	                                WHEN 30 THEN 'Inbound-已入库'
+	                                WHEN 45 THEN 'Wait Delivery-待派送'
+	                                WHEN 50 THEN 'Dispatching-派送中'
+	                                WHEN 60 THEN 'The Second Delivery-二次派送'
+	                                WHEN 64 THEN 'Returning-退货中'
+	                                WHEN 65 THEN 'Return Goods-退货'
+	                                WHEN 70 THEN 'Client Received-签收'
+	                                WHEN 80 THEN 'Shut Out-关单'
+	                                WHEN 90 THEN 'Cancel-取消'
+                  END as delivery_status -- delivery订单状态（中文映射）
+  FROM r1 a 
+  LEFT JOIN r2 b
+  ON a.expressnumber = b.expressnumber
+  LEFT JOIN r3 c
+  ON a.expressnumber = c.expressnumber
+  LEFT JOIN r4 d
+  ON a.expressnumber = d.expressnumber
+  LEFT JOIN r5 e
+  ON a.expressnumber = e.expressnumber
+) res2
+LEFT JOIN `ads`.`ads_address_info_d` res3
+ON lower(res2.`city`) = lower(res3.`city`) AND lower(res2.`suburb`) = lower(res3.`suburb`) AND res2.`postcode` = res3.`postcode`
+WHERE res2.expressnumber IS NOT NULL;
