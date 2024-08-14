@@ -1,0 +1,83 @@
+with t1 as (
+select 
+        e.id,
+        from_unixtime(if((e.africareceivetime - 6 * 60 * 60 * 1000)/1000>0,(e.africareceivetime - 6 * 60 * 60 * 1000)/1000,0),'%Y-%m-%d') sreadl,
+        e.clientid,
+        e.receivecity ,
+        e.receivepostcode,
+        e.receivesuburb,
+        if(ea.signedtime = 0 ,-1, ROUND((ea.signedtime - e.africareceivetime)/(24*60*60*1000),1)) d,
+        if(ea.signedtime = 0 ,-1, 
+                ROUND((ea.signedtime - 
+                        case when ea.taxpaidtime > e.africareceivetime 
+                                then (e.africareceivetime + (ea.taxpaidtime - e.africareceivetime))
+                                else e.africareceivetime end)/(24*60*60*1000),1)) d2,
+        b.blnumber,
+        e.sendcompany
+from buffaloex2.express e,
+buffaloex2.blnumber b,
+buffaloex2.expressaging ea 
+where  e.blnumber = b.blnumber
+and e.id = ea.expressid
+and e.clientid in (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303)
+and from_unixtime(if((e.africareceivetime - 6 * 60 * 60 * 1000)/1000>0,(e.africareceivetime - 6 * 60 * 60 * 1000)/1000,0),'%Y-%m-%d') >= '2024-01-01'
+),
+t2 as (
+SELECT sreadl,d,count(id) as cnt,
+       case when d=-1 then count(id) else 0 end as '未入库',
+       IF ((d > 0 and d <= 1) or d < -1,count(id),0) as  '1D达成率',
+                         IF ((d > 0 and d <= 2) or d < -1,count(id),0) as  '2D达成率',
+                         IF ((d > 0 and d <= 3) or d < -1,count(id),0) as  '3D达成率',
+                         IF ((d > 0 and d <= 4) or d < -1,count(id),0) as  '4D达成率',
+                         IF ((d > 0 and d <= 5) or d < -1,count(id),0) as  '5D达成率',
+                         IF ((d > 0 and d <= 6) or d < -1,count(id),0) as  '6D达成率',
+                         IF ((d > 0 and d <= 7) or d < -1,count(id),0) as  '7D达成率',
+                         IF ((d > 0 and d <= 8) or d < -1,count(id),0) as  '8D达成率',
+                         IF ((d > 0 and d <= 9) or d < -1,count(id),0) as  '9D达成率',
+                         IF ((d > 0 and d <= 10) or d < -1,count(id),0) as  '10D达成率',
+                         IF ((d > 0 and d <= 11) or d < -1,count(id),0) as  '11D达成率',
+                         IF ((d > 0 and d <= 12) or d < -1,count(id),0) as  '12D达成率',
+                         IF ((d > 0 and d <= 13) or d < -1,count(id),0) as  '13D达成率',
+                         IF ((d > 0 and d <= 14) or d < -1,count(id),0) as  '14D达成率',
+                         IF ((d > 0 and d <= 15) or d < -1,count(id),0) as  '15D达成率',
+                         IF ((d > 0 and d <= 16) or d < -1,count(id),0) as  '16D达成率',
+                         IF ((d > 0 and d <= 17) or d < -1,count(id),0) as  '17D达成率',
+                         IF ((d > 0 and d <= 18) or d < -1,count(id),0) as  '18D达成率',
+                         IF ((d > 0 and d <= 19) or d < -1,count(id),0) as  '19D达成率',
+                         IF ((d > 0 and d <= 20) or d < -1,count(id),0) as  '20D达成率',
+                         IF ((d > 0 and d <= 25) or d < -1,count(id),0) as  '25D达成率',
+                         IF ((d > 0 and d <= 30) or d < -1,count(id),0) as  '30D达成率',
+                         IF ((d > 30) or d < -1,count(id),0) as  '30D以上达成率'
+FROM t1
+GROUP BY sreadl,d
+)
+
+select sreadl as '机场入库时间',
+       sum(cnt) as '包裹数量',
+       sum(`未入库`) as '未签收',
+       sum(`1D达成率`),
+                         sum(`2D达成率`),
+                         sum(`3D达成率`),
+                         sum(`4D达成率`),
+                         sum(`5D达成率`),
+                         sum(`6D达成率`),
+                         sum(`7D达成率`),
+                         sum(`8D达成率`),
+                         sum(`9D达成率`),
+                         sum(`10D达成率`),
+                         sum(`11D达成率`),
+                         sum(`12D达成率`),
+                         sum(`13D达成率`),
+                         sum(`14D达成率`),
+                         sum(`15D达成率`),
+                         sum(`16D达成率`),
+                         sum(`17D达成率`),
+                         sum(`18D达成率`),
+                         sum(`19D达成率`),
+                         sum(`20D达成率`),
+                         sum(`25D达成率`),
+                         sum(`30D达成率`),
+                         sum(`30D以上达成率`)
+FROM t2
+GROUP BY sreadl
+order by sreadl
