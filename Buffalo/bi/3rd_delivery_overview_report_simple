@@ -1,0 +1,108 @@
+with dayhour as
+(
+    SELECT DATE_ADD('2024-01-01', INTERVAL (n-1) DAY) AS date_sequence
+    FROM 
+		(
+      SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+      FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+    ) numbers
+    WHERE DATE_ADD('2024-01-01', INTERVAL (n-1) DAY) <= curdate()
+),
+t1 as
+(
+  SELECT min(date_sequence) as monday,month(date_sequence) as month
+  FROM dayhour
+  WHERE if(DAYOFWEEK(date_sequence) = 1,(DAYOFWEEK(date_sequence)+6),(DAYOFWEEK(date_sequence)-1))= 1
+  GROUP BY month(date_sequence)
+),
+week as 
+(
+  SELECT dayhour.date_sequence,
+         if(a.month is not null,a.month,b.month) as month,
+         WEEK(DATE_SUB(date_sequence, INTERVAL if(DAYOFWEEK(date_sequence) = 1,(DAYOFWEEK(date_sequence)+6),(DAYOFWEEK(date_sequence)-1))-1 DAY), 1) - WEEK(if(b.monday is null,a.monday,b.monday)) as week,
+         concat(if(a.month is not null,a.month,b.month),'.','w',WEEK(DATE_SUB(date_sequence, INTERVAL if(DAYOFWEEK(date_sequence) = 1,(DAYOFWEEK(date_sequence)+6),(DAYOFWEEK(date_sequence)-1))-1 DAY), 1) - WEEK(if(b.monday is null,a.monday,b.monday))) as month_week
+  FROM dayhour
+  LEFT JOIN t1 a
+  ON date_sequence>= a.monday and month(dayhour.date_sequence) = a.month
+  LEFT JOIN t1 b
+  ON a.monday is null and cast(month(dayhour.date_sequence) as int)-1 = cast(b.month as int)
+)
+
+
+SELECT from_unixtime(buffalooutboundtime / 1000 - 6 * 60 * 60, '%Y-%m-%d') as buffalooutboundtime_select,
+       b.month_week,
+       -- from_unixtime(3rdcompletedtime / 1000 - 6 * 60 * 60, '%Y-%m-%d') as 3rdcompletedtime_select,
+       -- from_unixtime(buffalocompletedtime / 1000 - 6 * 60 * 60, '%Y-%m-%d') as buffalocompletedtime_select,
+       outbounddc,
+       expresscompanyname,
+       SUM(CASE WHEN IFNULL(expresscompanyname, '') IN ('DPD Laser','Skynet','FastWay','ITT','Skynet Business') AND IFNULL(canceltime_f, '') = '' THEN 1
+                WHEN IFNULL(expresscompanyname, '') IN ('EMIT') THEN 1 ELSE 0 END) as Total_Outbound_Record,
+       COUNT(DISTINCT orderno)  as Total_Order_Volume, 
+       SUM(IF(IFNULL(buffalooutboundtime_f, '') != '' AND IFNULL(3rdinboundtime_f, '') = '' AND IFNULL(firstdeliverytime_f, '') = '' AND IFNULL(3rdcompletedtime_f, '') = '' AND IFNULL(3rdpoduploadtime_f, '') = '' AND IFNULL(3rdsignedtime_f, '') = '' AND IFNULL(3rdrtstime_f, '') = '' AND IFNULL(3rdlosttime_f, '') = '', 1, 0)) as Outbound_Only_Order,
+       SUM(IF(IFNULL(3rdoverinbound, '') = 'Yes', 1, 0)) as Over_due_Scan_in,
+       SUM(IF(IFNULL(3rdinboundtime_f, '') != '' AND IFNULL(3rdcompletedtime_f, '') = '', 1, 0)) as Dispatching_Order,
+       SUM(IF(IFNULL(3rdsignedtime_f, '') != '', 1, 0)) as Client_Received_Order,
+       SUM(IF(IFNULL(canceltime_f, '') != '', 1, 0)) as Cancel_Order,
+       SUM(IF(IFNULL(3rdlosttime_f, '') != '', 1, 0)) as Lost_Order_3rd,
+       SUM(IF(IFNULL(buffalolosttime_f, '') != '', 1, 0)) as Lost_Order_Buffalo,
+       SUM(IF(IFNULL(3rdrtstime_f, '') != '', 1, 0)) as RTS_Order,
+       'Nature days' as is_workday,
+       SUM(IF(IFNULL(buffalodeliverydays, -99999) != -99999 AND buffalodeliverydays <= 3, 1, 0)) as Finish_in_3_days_od,
+       SUM(IF(IFNULL(3rddeliverydays, -99999) != -99999 AND 3rddeliverydays <= 3, 1, 0)) as Finish_in_3_days_3pl,
+       SUM(IF(IFNULL(buffalodeliverydays, -99999) != -99999 AND buffalodeliverydays <= 5, 1, 0)) as Finish_in_5_days_od,
+       SUM(IF(IFNULL(3rddeliverydays, -99999) != -99999 AND 3rddeliverydays <= 5, 1, 0)) as Finish_in_5_days_3pl,
+       SUM(IF(IFNULL(outofsla, '') = 'Yes', 1, 0)) as Out_of_SLA_ratio,
+       SUM(IF(IFNULL(3rdlasttracktimedays, -99999) != -99999 AND 3rdlasttracktimedays > 2, 1, 0)) as Tracking_not_2,
+       SUM(IF(IFNULL(3rdlasttracktimedays, -99999) != -99999 AND 3rdlasttracktimedays > 4, 1, 0)) as Tracking_not_4,
+       SUM(IF(IFNULL(3rdsignedsystimehours, -99999) != -99999 AND 3rdsignedsystimehours > 10, 1, 0)) as Signoff_code_over_10h,
+       SUM(IF(IFNULL(3rdsignedsystimehours, -99999) != -99999 AND 3rdsignedsystimehours > 24, 1, 0)) as Signoff_code_over_1_day,
+       SUM(IF(IFNULL(3rdsignedsystimehours, -99999) != -99999 AND 3rdsignedsystimehours > 48, 1, 0)) as Signoff_code_over_2_days,
+       SUM(IF(IFNULL(3rdpoduploadtimehours, -99999) != -99999 AND 3rdpoduploadtimehours > 48, 1, 0)) as POD_code_over_2_days,
+       SUM(IF(IFNULL(geofence, '') != '', 1, 0)) as Parcels_suppose
+FROM `ads`.`ads_3rd_delivery_detail` a 
+LEFT JOIN week b 
+ON from_unixtime(buffalooutboundtime / 1000 - 6 * 60 * 60, '%Y-%m-%d') = b.date_sequence
+GROUP BY `buffalooutboundtime_select`,outbounddc,`expresscompanyname`
+         -- `3rdcompletedtime_select`,
+         -- `buffalocompletedtime_select`
+
+UNION ALL
+
+SELECT from_unixtime(buffalooutboundtime / 1000 - 6 * 60 * 60, '%Y-%m-%d') as buffalooutboundtime_select,
+       b.month_week,
+       -- from_unixtime(3rdcompletedtime / 1000 - 6 * 60 * 60, '%Y-%m-%d') as 3rdcompletedtime_select,
+       -- from_unixtime(buffalocompletedtime / 1000 - 6 * 60 * 60, '%Y-%m-%d') as buffalocompletedtime_select,
+       outbounddc,
+       expresscompanyname,
+       SUM(CASE WHEN IFNULL(expresscompanyname, '') IN ('DPD Laser','Skynet','FastWay','ITT','Skynet Business') AND IFNULL(canceltime_f, '') = '' THEN 1
+                WHEN IFNULL(expresscompanyname, '') IN ('EMIT') THEN 1 ELSE 0 END) as Total_Outbound_Record,
+       COUNT(DISTINCT orderno)  as Total_Order_Volume, 
+       SUM(IF(IFNULL(buffalooutboundtime_f, '') != '' AND IFNULL(3rdinboundtime_f, '') = '' AND IFNULL(firstdeliverytime_f, '') = '' AND IFNULL(3rdcompletedtime_f, '') = '' AND IFNULL(3rdpoduploadtime_f, '') = '' AND IFNULL(3rdsignedtime_f, '') = '' AND IFNULL(3rdrtstime_f, '') = '' AND IFNULL(3rdlosttime_f, '') = '', 1, 0)) as Outbound_Only_Order,
+       SUM(IF(IFNULL(3rdoverinbound, '') = 'Yes', 1, 0)) as Over_due_Scan_in,
+       SUM(IF(IFNULL(3rdinboundtime_f, '') != '' AND IFNULL(3rdcompletedtime_f, '') = '', 1, 0)) as Dispatching_Order,
+       SUM(IF(IFNULL(3rdsignedtime_f, '') != '', 1, 0)) as Client_Received_Order,
+       SUM(IF(IFNULL(canceltime_f, '') != '', 1, 0)) as Cancel_Order,
+       SUM(IF(IFNULL(3rdlosttime_f, '') != '', 1, 0)) as Lost_Order_3rd,
+       SUM(IF(IFNULL(buffalolosttime_f, '') != '', 1, 0)) as Lost_Order_Buffalo,
+       SUM(IF(IFNULL(3rdrtstime_f, '') != '', 1, 0)) as RTS_Order,
+       'Working days' as is_workday,
+       SUM(IF(IFNULL(buffalodeliveryrealdays, -99999) != -99999 AND buffalodeliveryrealdays <= 3, 1, 0)) as Finish_in_3_days_od,
+       SUM(IF(IFNULL(3rddeliveryrealdays, -99999) != -99999 AND 3rddeliveryrealdays <= 3, 1, 0)) as Finish_in_3_days_3pl,
+       SUM(IF(IFNULL(buffalodeliveryrealdays, -99999) != -99999 AND buffalodeliveryrealdays <= 5, 1, 0)) as Finish_in_5_days_od,
+       SUM(IF(IFNULL(3rddeliveryrealdays, -99999) != -99999 AND 3rddeliveryrealdays <= 5, 1, 0)) as Finish_in_5_days_3pl,
+       SUM(IF(IFNULL(outofsla, '') = 'Yes', 1, 0)) as Out_of_SLA_ratio,
+       SUM(IF(IFNULL(3rdlasttracktimerealdays, -99999) != -99999 AND 3rdlasttracktimerealdays > 2, 1, 0)) as Tracking_not_2,
+       SUM(IF(IFNULL(3rdlasttracktimerealdays, -99999) != -99999 AND 3rdlasttracktimerealdays > 4, 1, 0)) as Tracking_not_4,
+       SUM(IF(IFNULL(3rdsignedsystimehours, -99999) != -99999 AND 3rdsignedsystimehours > 10, 1, 0)) as Signoff_code_over_10h,
+       SUM(IF(IFNULL(3rdsignedsystimehours, -99999) != -99999 AND 3rdsignedsystimehours > 24, 1, 0)) as Signoff_code_over_1_day,
+       SUM(IF(IFNULL(3rdsignedsystimehours, -99999) != -99999 AND 3rdsignedsystimehours > 48, 1, 0)) as Signoff_code_over_2_days,
+       SUM(IF(IFNULL(3rdpoduploadtimehours, -99999) != -99999 AND 3rdpoduploadtimehours > 48, 1, 0)) as POD_code_over_2_days,
+       SUM(IF(IFNULL(geofence, '') != '', 1, 0)) as Parcels_suppose
+FROM `ads`.`ads_3rd_delivery_detail` a 
+LEFT JOIN week b 
+ON from_unixtime(buffalooutboundtime / 1000 - 6 * 60 * 60, '%Y-%m-%d') = b.date_sequence
+GROUP BY `buffalooutboundtime_select`,outbounddc,`expresscompanyname`
+         -- `3rdcompletedtime_select`,
+         -- `buffalocompletedtime_select`,
