@@ -1,0 +1,143 @@
+-- 日常操作
+WITH t1 AS
+(
+  -- POP Processed Orders
+  SELECT t.createtime as stat_timestamp, -- 中国时间
+	       t.id,
+				 t.expressid,
+				 t.orderno as expressnumber,
+	       t.createuserid as dealproofuserid,
+				 null as dealproofusername,
+	       1 as type,
+         'Tax commit history' as source_data
+  FROM buffaloex2.taxcommitrecord t
+  WHERE FROM_UNIXTIME(t.createtime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
+	  AND t.tab not in (1,3) -- 剔除no paid/less paid
+
+  UNION ALL
+
+  SELECT t.updatetime as stat_timestamp, -- 中国时间
+	       t.id,
+	       IF(t.workid = 0,null,t.workid) as expressid,
+				 null as expressnumber,
+				 null as dealproofuserid,
+	       SUBSTRING_INDEX(t.result,':',-1) as dealproofusername,
+	       1 as type,
+         'Sys history' as source_data
+  FROM buffaloex2.fnbbalancerecord t
+  WHERE FROM_UNIXTIME(t.updatetime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
+	  AND t.status = 30 AND t.companyid = 1 AND t.result LIKE '%Tax Paid%' 
+
+  UNION ALL
+
+  SELECT t.dealprooftime as stat_timestamp, -- 中国时间
+         t.id,
+         null as expressid,
+				 null as expressnumber,
+				 t.dealproofuserid,
+         null as dealproofusername,
+         1 as type,
+         'Record of tax operation - record of result' as source_data
+  FROM buffaloex2.taxpackageinfo t
+  WHERE FROM_UNIXTIME(t.dealprooftime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
+	  AND t.uploadprooftime > 0 AND t.dealprooftime != 0 AND t.dealproofresult IN (1,10,11) -- tax paid/refuse/paying
+
+  UNION ALL
+
+  SELECT r.createtime as stat_timestamp, -- 中国时间
+         r.taxpackageinfoid as id,
+				 null as expressid,
+         r.expressnumber,
+				 r.operatoruserid as dealproofuserid,
+         null as dealproofusername,
+         1 as type,
+         'Record of tax operation - record of Pop' as source_data
+  FROM buffaloex2.taxpackageinfoprocessrecord r
+  WHERE FROM_UNIXTIME(r.createtime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
+	  AND r.dealproofresult = 10
+
+  UNION ALL
+
+  -- Unknown Processed Orders
+  SELECT t.updatetime as stat_timestamp, -- 中国时间
+         t.id,
+				 IF(t.workid = 0,null,t.workid) as expressid,
+				 null as expressnumber,
+				 null as dealproofuserid,
+	       SUBSTRING_INDEX(t.result,':',-1) as dealproofusername,
+	       2 as type,
+         'Sys history' as source_data
+  FROM buffaloex2.fnbbalancerecord t
+  WHERE FROM_UNIXTIME(t.updatetime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
+	  AND t.status = 30 AND companyid = 1 AND (t.result LIKE '%Done Offline%' OR t.result LIKE '%2nd delivery Paid%')
+
+  UNION ALL
+
+  -- tax Processed Orders
+  SELECT t.createtime as stat_timestamp,
+         t.id,
+				 t.expressid,
+         t.orderno as expressnumber,
+         t.createuserid as dealproofuserid,
+				 null as dealproofusername,
+         3 as type,
+         'Tax commit history' as source_data
+  FROM buffaloex2.taxcommitrecord t
+  WHERE FROM_UNIXTIME(t.createtime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
+	  AND t.tab in (1,3) -- no paid/less paid
+
+  UNION ALL
+
+  -- Tax Refund Processed Orders
+  SELECT t.refundtime as stat_timestamp,
+         t.id,
+				 t.expressid,
+         null as expressnumber,
+				 t.finishuserid as dealproofuserid,
+         null as dealproofusername,
+         4 as type,
+         'Tax Refund' as source_data
+  FROM buffaloex2.taxrefund t
+  WHERE FROM_UNIXTIME(t.refundtime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
+	  AND refundstatus IN (20,30,40) -- refunding\refunded\rejected
+		
+)
+  SELECT FROM_UNIXTIME(t1.stat_timestamp/1000,'%Y-%m-%d') as stat_date_cn,
+         FROM_UNIXTIME(t1.stat_timestamp/1000,'%Y-%m-%d %H:%i:%s') as stat_time_cn,
+		  	 FROM_UNIXTIME(t1.stat_timestamp/1000-6*3600,'%Y-%m-%d') as stat_date_za,
+			   FROM_UNIXTIME(t1.stat_timestamp/1000-6*3600,'%Y-%m-%d %H:%i:%s') as stat_time_za,
+			   t1.id,
+			   t1.expressid,
+         COALESCE(e1.expressnumber,e2.expressnumber,t1.expressnumber) as expressnumber,
+         COALESCE(e1.companyname,e2.companyname,e3.companyname) as companyname,
+			   COALESCE(t1.dealproofusername,u.`name`) as dealproofusername,
+         t1.type,
+         t1.source_data,
+         row_number() over(partition by COALESCE(e1.expressnumber,e2.expressnumber,t1.expressnumber),COALESCE(t1.dealproofusername,u.`name`),FROM_UNIXTIME(t1.stat_timestamp/1000-6*3600,'%Y-%m-%d'),t1.type order by FROM_UNIXTIME(t1.stat_timestamp/1000-6*3600,'%Y-%m-%d %H:%i:%s') desc) as rn
+  FROM t1
+  LEFT JOIN buffaloex2.user u
+  ON t1.dealproofuserid = u.id 
+  LEFT JOIN 
+  (
+    SELECT id,expressnumber,sendcompany as companyname
+    FROM buffaloex2.express
+    WHERE from_unixtime(createtime / 1000, '%Y-%m-%d %H:%i:%s') >='2024-01-01 00:00:00'
+    GROUP BY id,expressnumber,sendcompany
+  )e1
+  ON t1.source_data IN ('Sys history','Tax Refund') AND t1.expressid = e1.id
+  LEFT JOIN 
+  (
+    SELECT taxpackageinfoid,GROUP_CONCAT(expressnumber) as expressnumber,GROUP_CONCAT(DISTINCT sendcompany) as companyname
+    FROM buffaloex2.express
+    WHERE from_unixtime(createtime / 1000, '%Y-%m-%d %H:%i:%s') >='2024-01-01 00:00:00'
+    GROUP BY taxpackageinfoid
+  )e2
+  ON t1.source_data IN ( 'Record of tax operation - record of result','Record of tax operation - record of Pop') AND t1.id = e2.taxpackageinfoid
+  LEFT JOIN 
+  (
+    SELECT expressnumber,sendcompany as companyname
+    FROM buffaloex2.express
+    WHERE from_unixtime(createtime / 1000, '%Y-%m-%d %H:%i:%s') >='2024-01-01 00:00:00'
+    GROUP BY expressnumber,sendcompany
+  )e3
+  ON t1.source_data = 'Tax commit history' AND t1.expressnumber = e3.expressnumber
