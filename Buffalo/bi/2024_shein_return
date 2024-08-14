@@ -1,0 +1,62 @@
+select e.expressnumber as "订单号",
+e.id,
+       from_unixtime(e.createtime/1000,'%Y-%m-%d %H:%i:%s') as "下单时间",
+       CASE when e.status = 5 THEN 'Order Exception'
+            when e.status = 8 THEN 'Waiting for payment'
+            when e.status = 10 THEN 'Order Confirmed'
+            when e.status = 20 THEN 'CN Inbound'
+            when e.status = 21 THEN 'CN Outbound'
+            when e.status = 23 THEN 'Warehouse transfer'
+            when e.status = 30 THEN 'CN Declared-Awaiting departure confirmation'
+            when e.status = 40 THEN 'International Shipping'
+            when e.status = 50 THEN 'Arrival at South Africa customs'
+            when e.status = 67 THEN 'Scanned in at SA warehouse'
+            when e.status = 68 THEN 'Picking...-拣货中'
+            when e.status = 69 THEN 'Packaging complete'
+            when e.status = 70 THEN 'Dispatching...-目的国落地配送中'
+            when e.status = 73 THEN 'In the transit'
+            when e.status = 80 THEN 'Client Received'
+            when e.status = 90 THEN 'Cancel-取消'
+            when e.status = 100 THEN 'Shout out-关单'
+       END as  "Admin订单状态",
+       case e2.sendstatus when -3 then 'Tax Unpaid and not committed Inbound'
+	                        when -2 then 'Tax Unpaid and not committed Confirmed'
+	                        when 1 then 'Unpaid Confirmed'
+	                        when  2 THEN 'Not Committed Confirmed'
+	                        when  3 THEN 'Not Committed Inbound'
+	                        when  5 THEN 'Order Confirmed-下单成功'
+	                        when  13 THEN 'Pick Complete-已取件'
+	                        when  17 THEN 'Pack Complete-打包完成'
+	                        when  20 THEN 'In the Transit-转运中'
+	                        when  30 THEN 'Inbound-已入库'
+	                        when  45 THEN 'Wait Delivery-待派送'
+	                        when  50 THEN 'Dispatching-派送中'
+	                        when  60 THEN 'The Second Delivery-二次派送'
+	                        when  64 THEN 'Returning-退货中'
+	                        when  65 THEN 'Return Goods-退货'
+	                        when  70 THEN 'Client Received-签收'
+	                        when  80 THEN 'Shut Out-关单'
+	                        when  90 THEN 'Cancel-取消'
+       end as "Delivery订单状态",
+       er.content as "操作轨迹",
+       from_unixtime(er.createtime/1000,'%Y-%m-%d %H:%i:%s') as "轨迹操作时间",
+			 er.images as "快递员做退回时拍的图片",
+			 er1.content as "最后一条轨迹",
+       from_unixtime(er1.createtime/1000,'%Y-%m-%d %H:%i:%s') as "最后一条轨迹更新时间"
+from buffaloex2.express e
+join 
+(
+	select expressid,content,createuserid,createtime,images,row_number() over(PARTITION by expressid order by createtime DESC) as tank
+  from buffaloex2.expressrecord
+  where content like 'Return! reason:%'
+)er
+on e.id = er.expressid and er.tank = 1
+left join 
+(
+  select expressid,content,createuserid,createtime,row_number() over(PARTITION by expressid order by createtime DESC) as tank
+  from buffaloex2.expressrecord
+)er1
+on e.id = er1.expressid and er1.tank = 1
+left join buffaloex_delivery.express e2 on e.expressnumber = e2.expressnumber
+where from_unixtime(e.createtime/1000,'%Y-%m-%d %H:%i:%s') >= '2024-01-01 00:00:00' -- 2024年
+  and e.clientid in (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303) -- shein
