@@ -1,0 +1,596 @@
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+TRUNCATE TABLE `ads`.`ads_3rd_delivery_detail`
+INSERT INTO `ads`.`ads_3rd_delivery_detail`
+
+WITH 3rd_schedule AS (
+	SELECT holidaytime FROM buffaloex_delivery.holiday WHERE holidayplanid = 2942423491321984 #使用名为Rest days for 3PL SLA日程
+),
+
+outbounddeliveryorderdetail AS (
+	SELECT obd.expressid,obd.createtime,obd.expresscompanyid,obd.hubid
+    ,ifnull(lag(obd.createtime) over(partition by obd.expressid order by obd.createtime asc), 0) as 'pretime'
+	,obd.createtime as 'lasttime'
+	,ifnull(lead(obd.createtime) over(partition by obd.expressid order by obd.createtime asc), UNIX_TIMESTAMP() * 1000) as 'nexttime'
+    FROM
+    buffaloex_delivery.outbounddeliveryorderdetail obd
+	WHERE
+	obd.createtime >= 1717192800000
+	AND obd.expresscompanyid IN (2, 8, 24, 2590541559123122, 2266452665457878, 1921637017699658, 11) #只查dpd。skynet。skynet business。fastway。ITT。Emit。Heavy freight
+)
+
+SELECT
+M.*,
+CASE
+	WHEN COALESCE(canceltime, '') != '' THEN 'Canceled'
+    WHEN COALESCE(3rdlosttime, '') != '' THEN 'Lost'
+    WHEN COALESCE(3rdsignedtime, '') != '' THEN 'Delivered'
+    WHEN COALESCE(rtsinboundtime, '') != '' and COALESCE(firstdeliverytime, '') = '' THEN 'RTS Without Delivering'
+	WHEN COALESCE(3rdrtstime, '') != '' and COALESCE(firstdeliverytime, '') != '' and COALESCE(rtsinboundtime, '') != '' THEN 'RTS due to failed'
+	WHEN COALESCE(3rdinboundtime, '') != '' and COALESCE(3rdcompletedtime, '') = '' THEN 'Delivering'
+END AS 'outboundstatus',
+IF(IF(3rddeliveryrealdays, 3rddeliveryrealdays > sladays, false), 'Yes', 'No') AS 'outofsla', #3rd-party Actual Nett Work Days ＞ SLA 为 Yes，否则为 No
+IF(COALESCE(commitcompanytime, '') != '', FROM_UNIXTIME(commitcompanytime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS 'commitcompanytime_f',
+IF(COALESCE(buffalooutboundtime, '') != '', FROM_UNIXTIME(buffalooutboundtime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS 'buffalooutboundtime_f',
+IF(COALESCE(3rdinboundtime, '') != '', FROM_UNIXTIME(3rdinboundtime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS '3rdinboundtime_f',
+IF(COALESCE(firstdeliverytime, '') != '', FROM_UNIXTIME(firstdeliverytime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS 'firstdeliverytime_f',
+IF(COALESCE(3rdcompletedtime, '') != '', FROM_UNIXTIME(3rdcompletedtime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS '3rdcompletedtime_f',
+IF(COALESCE(buffalocompletedtime, '') != '', FROM_UNIXTIME(buffalocompletedtime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS 'buffalocompletedtime_f',
+IF(COALESCE(3rdpoduploadtime, '') != '', FROM_UNIXTIME(3rdpoduploadtime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS '3rdpoduploadtime_f',
+IF(COALESCE(3rdpoduploadsystime, '') != '', FROM_UNIXTIME(3rdpoduploadsystime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS '3rdpoduploadsystime_f',
+IF(COALESCE(3rdsignedtime, '') != '', FROM_UNIXTIME(3rdsignedtime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS '3rdsignedtime_f',
+IF(COALESCE(3rdsignedsystime, '') != '', FROM_UNIXTIME(3rdsignedsystime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS '3rdsignedsystime_f',
+IF(COALESCE(3rdrtstime, '') != '', FROM_UNIXTIME(3rdrtstime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS '3rdrtstime_f',
+IF(COALESCE(rtsinboundtime, '') != '', FROM_UNIXTIME(rtsinboundtime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS 'rtsinboundtime_f',
+IF(COALESCE(canceltime, '') != '', FROM_UNIXTIME(canceltime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS 'canceltime_f',
+IF(COALESCE(3rdlosttime, '') != '', FROM_UNIXTIME(3rdlosttime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS '3rdlosttime_f',
+IF(COALESCE(buffalolosttime, '') != '', FROM_UNIXTIME(buffalolosttime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS 'buffalolosttime_f',
+IF(COALESCE(3rdlasttracktime, '') != '', FROM_UNIXTIME(3rdlasttracktime / 1000 - 21600, '%Y-%m-%d %H:%i:%s'), '') AS '3rdlasttracktime_f'
+FROM (
+SELECT
+T.*,
+IF(COALESCE(3rdpoduploadtime, '') != '' and COALESCE(3rdpoduploadsystime, '') != '',  ROUND((3rdpoduploadsystime - 3rdpoduploadtime) / 3600000, 2), null) AS '3rdpoduploadtimehours', #3rd-party POD Upload Storage time 减去 3rd-party POD Upload Time 的小时数
+IF(COALESCE(3rdsignedtime, '') != '' and COALESCE(3rdsignedsystime, '') != '',  ROUND((3rdsignedsystime - 3rdsignedtime) / 3600000, 2), null) AS '3rdsignedsystimehours', #3rd-party Signed Storage time 减去 3rd-party Signed Time 的小时数
+IF(COALESCE(3rdlasttracktime, '') != '' AND (sendstatus != 70 AND sendstatus != 80 AND sendstatus != 90),  TIMESTAMPDIFF(DAY, DATE(FROM_UNIXTIME(3rdlasttracktime / 1000 - 21600)), DATE(FROM_UNIXTIME(UNIX_TIMESTAMP() - 21600))), null) AS '3rdlasttracktimedays', #三方最后轨迹的操作时间到今日的自然天数
+IF(COALESCE(3rdlasttracktime, '') != '' AND (sendstatus != 70 AND sendstatus != 80 AND sendstatus != 90),  TIMESTAMPDIFF(DAY, DATE(FROM_UNIXTIME(3rdlasttracktime / 1000 - 21600)), DATE(FROM_UNIXTIME(UNIX_TIMESTAMP() - 21600))) - (SELECT count(1) FROM 3rd_schedule WHERE holidaytime >= UNIX_TIMESTAMP(DATE(FROM_UNIXTIME(3rdlasttracktime / 1000 - 21600))) * 1000 AND holidaytime <= UNIX_TIMESTAMP(DATE(FROM_UNIXTIME(UNIX_TIMESTAMP() - 21600))) * 1000), null) AS '3rdlasttracktimerealdays', #三方最后轨迹的操作时间到今日工作日天数
+IF(COALESCE(buffalooutboundtime, '') != '',  TIMESTAMPDIFF(DAY, DATE(FROM_UNIXTIME(buffalooutboundtime / 1000 - 21600)), DATE(FROM_UNIXTIME(IFNULL(buffalocompletedtime, UNIX_TIMESTAMP() * 1000) / 1000 - 21600))), null) AS 'buffalodeliverydays', #Buffalo Outbound Time 开始到Completed Time (Buffalo) 经过的自然日天数
+IF(COALESCE(buffalooutboundtime, '') != '',  TIMESTAMPDIFF(DAY, DATE(FROM_UNIXTIME(buffalooutboundtime / 1000 - 21600)), DATE(FROM_UNIXTIME(IFNULL(buffalocompletedtime, UNIX_TIMESTAMP() * 1000) / 1000 - 21600))) - (SELECT count(1) FROM 3rd_schedule WHERE holidaytime >= UNIX_TIMESTAMP(DATE(FROM_UNIXTIME(buffalooutboundtime / 1000 - 21600))) * 1000 AND holidaytime <= UNIX_TIMESTAMP(DATE(FROM_UNIXTIME(IFNULL(buffalocompletedtime, UNIX_TIMESTAMP() * 1000) / 1000 - 21600))) * 1000), null) AS 'buffalodeliveryrealdays', #Buffalo Outbound Time 开始到Completed Time (Buffalo) 经过的工作日天数
+IF(COALESCE(IFNULL(3rdinboundtime, buffalooutboundtime), '') != '',  TIMESTAMPDIFF(DAY, DATE(FROM_UNIXTIME(IFNULL(3rdinboundtime, buffalooutboundtime) / 1000 - 21600)), DATE(FROM_UNIXTIME(IFNULL(3rdcompletedtime, UNIX_TIMESTAMP() * 1000) / 1000 - 21600))), null) AS '3rddeliverydays', #3rd-party Scan In Time 开始到Completed Time (3rd) 经过的自然日
+IF(COALESCE(IFNULL(3rdinboundtime, buffalooutboundtime), '') != '',  TIMESTAMPDIFF(DAY, DATE(FROM_UNIXTIME(IFNULL(3rdinboundtime, buffalooutboundtime) / 1000 - 21600)), DATE(FROM_UNIXTIME(IFNULL(3rdcompletedtime, UNIX_TIMESTAMP() * 1000) / 1000 - 21600))) - (SELECT count(1) FROM 3rd_schedule WHERE holidaytime >= UNIX_TIMESTAMP(DATE(FROM_UNIXTIME(IFNULL(3rdinboundtime, buffalooutboundtime) / 1000 - 21600))) * 1000 AND holidaytime <= UNIX_TIMESTAMP(DATE(FROM_UNIXTIME(IFNULL(3rdcompletedtime, UNIX_TIMESTAMP() * 1000) / 1000 - 21600))) * 1000), null) AS '3rddeliveryrealdays', #3rd-party Scan In Time 开始到Completed Time (3rd) 经过的工作日 (Delivery - Workday Arrangement)
+IF(
+	(COALESCE(buffalooutboundtime, '') != '' AND HOUR(FROM_UNIXTIME(buffalooutboundtime / 1000 - 21600)) < 18 AND TIMESTAMPDIFF(DAY, DATE(FROM_UNIXTIME(buffalooutboundtime / 1000 - 21600)), DATE(FROM_UNIXTIME(IFNULL(3rdinboundtime, UNIX_TIMESTAMP() * 1000) / 1000 - 21600))) = 0)
+    OR (COALESCE(buffalooutboundtime, '') != '' AND HOUR(FROM_UNIXTIME(buffalooutboundtime / 1000 - 21600)) >= 18 AND ROUND((IFNULL(3rdinboundtime, UNIX_TIMESTAMP() * 1000) - buffalooutboundtime) / 3600000, 2) < 17), 
+    'No', 
+    'Yes'
+)
+AS '3rdoverinbound' #这个字段后面，Over due Scan in，取值1.三方当日的订单下午六点前出库的订单在同一天出现三方scanin轨迹 2.三方当日订单出库时间在下午六点后的订单在次日上午11点前出现scanin轨迹的，这两种情况为no，其他超时的情况均为yes
+FROM (
+SELECT
+ec.name AS expresscompanyname, #第三方快递公司名称
+e.sendstatus,
+CASE e.sendstatus
+    WHEN 5 THEN 'Order Confirmed-下单成功'
+    WHEN 13 THEN 'Pick complete-已取件'
+    WHEN 17 THEN 'Pack complete-打包完成'
+    WHEN 20 THEN 'In the transit-转运中'
+    WHEN 30 THEN 'Inbound-已入库'
+    WHEN 45 THEN 'Wait delivery-待派送'
+    WHEN 50 THEN 'Dispatching-派送中'
+    WHEN 60 THEN 'The Second Delivery-二次派送'
+    WHEN 64 THEN 'Returning-退货中'
+    WHEN 65 THEN 'Return goods-退货'
+    WHEN 70 THEN 'Client Received-签收'
+    WHEN 80 THEN 'Shut Out-关单'
+    WHEN 90 THEN 'Cancel-取消'
+END AS orderstatus, #buffalo订单状态
+e.expressnumber AS 'orderno', #buffalo运单号
+e.thirdnumber, #上游第三方单号
+IFNULL(
+(SELECT othercompanynumber FROM buffaloex_delivery.pushothercompanyrecord WHERE createtime > obd.pretime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id ASC LIMIT 1),
+e.expresscompanyexpressnumber
+)
+AS 'othercompanynumber', #第三方快递公司单号
+(SELECT createtime FROM buffaloex_delivery.pushothercompanyrecord WHERE createtime > obd.pretime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id ASC LIMIT 1)
+AS 'commitcompanytime', #提交给第三方快递公司时间
+IFNULL(
+obd.createtime,
+(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND content = 'Transit to third-party Express' ORDER BY id ASC LIMIT 1) #取出库轨迹
+) AS 'buffalooutboundtime', #buffalo出库时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		null
+    WHEN 8 THEN #skynet
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '523' ORDER BY id ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '523' ORDER BY id ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '523' ORDER BY id ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('52', '33') ORDER BY id ASC LIMIT 1)
+    WHEN 2266452665457878 THEN #itt
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = 'B' ORDER BY id ASC LIMIT 1)
+END AS '3rdconfirmedtime', #第三方快递公司确认订单时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = 'PPP' ORDER BY id ASC LIMIT 1)
+    WHEN 8 THEN #skynet
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '564' ORDER BY id ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '564' ORDER BY id ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '564' ORDER BY id ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('9', '10') ORDER BY id ASC LIMIT 1)
+    WHEN 2266452665457878 THEN #itt
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('O', 'dhs', 'dht') ORDER BY id ASC LIMIT 1)
+END AS '3rdinboundtime', #第三方快递公司入库时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		#失败与签收最小时间
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND', 'ATL', 'R34', 'CLS', 'PHO', 'PCY', 'LAI', 'R35', 'DRU', 'NEI', 'PRS', 'R36', 'DEL', 'YES', 'FD1') ORDER BY createtime ASC LIMIT 1)
+    WHEN 8 THEN #skynet
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND ((trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')) OR (trackcode IN ('626', '629', '630', '533', '687'))) ORDER BY id ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND ((trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')) OR (trackcode IN ('626', '629', '630', '533', '687'))) ORDER BY id ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND ((trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')) OR (trackcode IN ('626', '629', '630', '533', '687'))) ORDER BY id ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('5', '4', '6', '8', '64') ORDER BY id ASC LIMIT 1)
+    WHEN 2266452665457878 THEN #itt
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('b', 'P', 'I') ORDER BY id ASC LIMIT 1)
+END AS 'firstdeliverytime', #第三方快递公司第一次派送时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('RTS', 'ATL', 'R34', 'CLS', 'PHO', 'PCY', 'LAI', 'R35', 'DRU', 'NEI', 'PRS', 'R36', 'DEL', 'YES', 'FD1', 'DGE', 'HIJ', 'CLM') ORDER BY id ASC LIMIT 1)
+    WHEN 8 THEN #skynet
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND (trackcode IN ('626', '629', '630', '533', '687', '530') OR (trackcode = '531' AND tracksubcode = '19')) ORDER BY id ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND (trackcode IN ('626', '629', '630', '533', '687', '530') OR (trackcode = '531' AND tracksubcode = '19')) ORDER BY id ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND (trackcode IN ('626', '629', '630', '533', '687', '530') OR (trackcode = '531' AND tracksubcode = '19')) ORDER BY id ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND (trackcode IN ('94', '4', '6', '8', '64') OR (trackcode = '5' AND tracksubcode IN ('13', '5G', '5L', 'HIJACK', '41'))) ORDER BY id ASC LIMIT 1)
+    WHEN 2266452665457878 THEN #itt
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('P', 'I', 'e', '5') ORDER BY id ASC LIMIT 1)
+END AS '3rdcompletedtime', #第三快递公司完单时间
+IFNULL(
+(SELECT createtime FROM buffaloex_delivery.expressrecord  WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND content LIKE 'Client Received%' ORDER BY id ASC LIMIT 1), #取签收轨迹
+IFNULL(
+(SELECT createtime FROM buffaloex_delivery.expressrecord  WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND content LIKE 'Shut Out%' ORDER BY id ASC LIMIT 1), #取关单轨迹
+IFNULL(
+(SELECT createtime FROM buffaloex_delivery.expressreturngoods WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id ASC LIMIT 1), #从returngoods里取更准确，returngoods如果不存在再从轨迹里取
+(SELECT createtime FROM buffaloex_delivery.expressrecord  WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = 0 AND content LIKE 'Returned to BUFFALO warehouse%' ORDER BY id ASC LIMIT 1) #多次returngoods的情况下从轨迹取会不准
+)
+)
+)
+AS 'buffalocompletedtime', #buffalo完单时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		IFNULL(
+			(SELECT trackrealtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('RTS', 'ATL', 'R34', 'CLS', 'PHO', 'PCY', 'LAI', 'R35', 'DRU', 'NEI', 'PRS', 'R36', 'DEL', 'YES', 'FD1', 'DGE', 'HIJ', 'CLM') ORDER BY id DESC LIMIT 1),
+            (SELECT COALESCE(trackrealtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+        )
+    WHEN 8 THEN #skynet
+		IFNULL(
+			(SELECT trackrealtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND (trackcode IN ('626', '629', '630', '533', '687', '530') OR (trackcode = '531' AND tracksubcode = '19')) ORDER BY id DESC LIMIT 1),
+			(SELECT COALESCE(trackrealtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+        )
+    WHEN 23 THEN #skynet local
+		IFNULL(
+			(SELECT trackrealtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND (trackcode IN ('626', '629', '630', '533', '687', '530') OR (trackcode = '531' AND tracksubcode = '19')) ORDER BY id DESC LIMIT 1),
+            (SELECT COALESCE(trackrealtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+        )
+    WHEN 24 THEN #skynet business
+		IFNULL(
+			(SELECT trackrealtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND (trackcode IN ('626', '629', '630', '533', '687', '530') OR (trackcode = '531' AND tracksubcode = '19')) ORDER BY id DESC LIMIT 1),
+            (SELECT COALESCE(trackrealtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+        )
+    WHEN 2590541559123122 THEN #dpd
+		IFNULL(
+			(SELECT trackrealtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('94', '4', '6', '8', '64', '5') ORDER BY id DESC LIMIT 1),
+            (SELECT COALESCE(trackrealtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+        )
+    WHEN 2266452665457878 THEN #itt
+		IFNULL(
+			(SELECT trackrealtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('P', 'I') ORDER BY id DESC LIMIT 1),
+            (SELECT COALESCE(trackrealtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+        )
+END AS '3rdpoduploadtime', #第三方快递公司上传pod信息时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		IFNULL(
+			(SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('RTS', 'ATL', 'R34', 'CLS', 'PHO', 'PCY', 'LAI', 'R35', 'DRU', 'NEI', 'PRS', 'R36', 'DEL', 'YES', 'FD1', 'DGE', 'HIJ', 'CLM') ORDER BY id DESC LIMIT 1),
+			(SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+        )
+    WHEN 8 THEN #skynet
+		IFNULL(
+			(SELECT unix_timestamp(modifytime) * 1000 FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('626', '629', '630', '533', '687', '530', '531-19', '530') ORDER BY id DESC LIMIT 1),
+            (SELECT unix_timestamp(modifytime) * 1000 FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+		)
+    WHEN 23 THEN #skynet local
+		IFNULL(
+			(SELECT unix_timestamp(modifytime) * 1000 FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN  ('626', '629', '630', '533', '687', '530', '531-19', '530') ORDER BY id DESC LIMIT 1),
+            (SELECT unix_timestamp(modifytime) * 1000 FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+		)
+    WHEN 24 THEN #skynet business
+		IFNULL(
+			(SELECT unix_timestamp(modifytime) * 1000 FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('626', '629', '630', '533', '687', '530', '531-19', '530') ORDER BY id DESC LIMIT 1),
+            (SELECT unix_timestamp(modifytime) * 1000 FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+		)
+	WHEN 2590541559123122 THEN #dpd
+		IFNULL(
+			(SELECT unix_timestamp(modifytime) * 1000 FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('94', '4', '6', '8', '64', '5') ORDER BY id DESC LIMIT 1),
+            (SELECT unix_timestamp(modifytime) * 1000 FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+		)
+    WHEN 2266452665457878 THEN #itt
+		IFNULL(
+			(SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('P', 'I') ORDER BY id DESC LIMIT 1),
+            (SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND images <> '' and expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id DESC LIMIT 1)
+		)
+END AS '3rdpoduploadsystime', #落库第三快方递公司上传pod信息时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('ATL', 'R34', 'CLS', 'PHO', 'PCY', 'LAI', 'R35', 'DRU', 'NEI', 'PRS', 'R36', 'DEL', 'YES', 'FD1') ORDER BY id ASC LIMIT 1)
+    WHEN 8 THEN #skynet
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('626', '629', '630', '533', '687') ORDER BY id ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN  ('626', '629', '630', '533', '687') ORDER BY id ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('626', '629', '630', '533', '687') ORDER BY id ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('4', '6', '8', '64') ORDER BY id ASC LIMIT 1)
+    WHEN 2266452665457878 THEN #itt
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('P', 'I') ORDER BY id ASC LIMIT 1)
+END AS '3rdsignedtime', #第三方快递公司签收时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		(SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('ATL', 'R34', 'CLS', 'PHO', 'PCY', 'LAI', 'R35', 'DRU', 'NEI', 'PRS', 'R36', 'DEL', 'YES', 'FD1') ORDER BY id ASC LIMIT 1)
+    WHEN 8 THEN #skynet
+		(SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('626', '629', '630', '533', '687') ORDER BY id ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN  ('626', '629', '630', '533', '687') ORDER BY id ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('626', '629', '630', '533', '687') ORDER BY id ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('4', '6', '8', '64') ORDER BY id ASC LIMIT 1)
+    WHEN 2266452665457878 THEN #itt
+		(SELECT COALESCE(syscurtime, createtime) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('P', 'I') ORDER BY id ASC LIMIT 1)
+END AS '3rdsignedsystime', #落库第三方快递公司签收时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('RTS') ORDER BY id ASC LIMIT 1)
+    WHEN 8 THEN #skynet
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('530') ORDER BY id ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN  ('530') ORDER BY id ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('530') ORDER BY id ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('94') ORDER BY id ASC LIMIT 1)
+    WHEN 2266452665457878 THEN #itt
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('5') ORDER BY id ASC LIMIT 1)
+END AS '3rdrtstime', #第三方快递公司rts时间
+IFNULL(
+(SELECT createtime FROM buffaloex_delivery.expressreturngoods WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id ASC LIMIT 1), #从returngoods里取更准确，returngoods如果不存在再从轨迹里取
+(SELECT createtime FROM buffaloex_delivery.expressrecord  WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = 0 AND content LIKE 'Returned to BUFFALO warehouse%' ORDER BY id ASC LIMIT 1) #多次returngoods的情况下从轨迹取会不准
+)
+AS 'rtsinboundtime', #入库第三方快递公司rts
+(SELECT if(canceltime > 0, canceltime, null) FROM buffaloex_delivery.pushothercompanyrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id ASC LIMIT 1)
+AS 'canceltime', #向第三方取消运单且成功的时间
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('DGE', 'HIJ', 'CLM') ORDER BY id ASC LIMIT 1)
+    WHEN 8 THEN #skynet
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode = '19' ORDER BY id ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode = '19' ORDER BY id ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode = '19' ORDER BY id ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '5' AND tracksubcode IN ('13', '5G', '5L', 'HIJACK', '41') ORDER BY id ASC LIMIT 1)
+    WHEN 2266452665457878 THEN #itt
+		(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('e') ORDER BY id ASC LIMIT 1)
+END AS '3rdlosttime', #第三方快递公司丢失时间
+if(et.losttime > 0, et.losttime, (SELECT losttime from buffaloex_delivery.buffalopayfor WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid))
+ AS 'buffalolosttime', #buffalo丢失时间
+ (SELECT reason FROM buffaloex_delivery.expressreturngoods WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY id ASC LIMIT 1)
+ AS 'rtsreason',
+(SELECT createtime FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY ID DESC limit 1)
+ AS '3rdlasttracktime', #第三方快递公司最后轨迹时间
+(SELECT content FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid ORDER BY ID DESC limit 1)
+ AS '3rdlasttrackcontent', #第三方快递公司最后轨迹内容
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		5
+    WHEN 8 THEN #skynet
+		5
+	WHEN 23 THEN #skynet local
+		5
+	WHEN 24 THEN #skynet business
+		2
+	WHEN 2590541559123122 THEN #dpd
+		5
+    WHEN 2266452665457878 THEN #itt
+		5
+END AS 'sladays', #快递公司承诺时效
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+        IFNULL((LENGTH(
+		(SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode IN ('A03','A06','A07','A08','A09','A10','A11','A12','A15','A17','A19','A35','A36','A44','A45','A46','A47','A48','A55','A61','A64','A65','A67','A68','A69','A70','A71','A72','A73','A74','A75','A76','A77','A78','A80','A81','A87','A88','A89','A91','A94','B01','B09','B13','B14','B15','B17','B21','B23','B25','B32','B40','B46','B49','B51','B52','B53','B54','B55','B60','B62','B65','B66','B67','B69','B70','B80','B82','B85','B86','B87','B92','B93','B95','BFN','BRS','C13','C15','C16','C21','C23','C24','C27','C29','C34','C35','C41','C42','C44','C48','C52','CAR','CLB','CPT','DUR','ELS','GRJ','HRS','JNB','KDP','KIM','LAY','LTB','MHK','NCS','NLP','O09','O10','O12','O32','O34','O43','O57','O58','O64','O66','O67','O68','O69','O81','O82','O86','O89','O91','O95','O96','O97','O98','OHH','OTH','PCS','PLZ','PRT','PRY','PTG','PZB','RBG','RCB','RFN','SBU','STD','VEE','VRB','VRE','WIT','WLK','ZZS') then '1'
+		WHEN trackcode IN ('A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND') then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND trackcode IN ('A03','A06','A07','A08','A09','A10','A11','A12','A15','A17','A19','A35','A36','A44','A45','A46','A47','A48','A55','A61','A64','A65','A67','A68','A69','A70','A71','A72','A73','A74','A75','A76','A77','A78','A80','A81','A87','A88','A89','A91','A94','B01','B09','B13','B14','B15','B17','B21','B23','B25','B32','B40','B46','B49','B51','B52','B53','B54','B55','B60','B62','B65','B66','B67','B69','B70','B80','B82','B85','B86','B87','B92','B93','B95','BFN','BRS','C13','C15','C16','C21','C23','C24','C27','C29','C34','C35','C41','C42','C44','C48','C52','CAR','CLB','CPT','DUR','ELS','GRJ','HRS','JNB','KDP','KIM','LAY','LTB','MHK','NCS','NLP','O09','O10','O12','O32','O34','O43','O57','O58','O64','O66','O67','O68','O69','O81','O82','O86','O89','O91','O95','O96','O97','O98','OHH','OTH','PCS','PLZ','PRT','PRY','PTG','PZB','RBG','RCB','RFN','SBU','STD','VEE','VRB','VRE','WIT','WLK','ZZS','A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND')
+		ORDER BY ID ASC
+		) t
+		group by expressid)
+		) - LENGTH(REPLACE((
+		SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode IN ('A03','A06','A07','A08','A09','A10','A11','A12','A15','A17','A19','A35','A36','A44','A45','A46','A47','A48','A55','A61','A64','A65','A67','A68','A69','A70','A71','A72','A73','A74','A75','A76','A77','A78','A80','A81','A87','A88','A89','A91','A94','B01','B09','B13','B14','B15','B17','B21','B23','B25','B32','B40','B46','B49','B51','B52','B53','B54','B55','B60','B62','B65','B66','B67','B69','B70','B80','B82','B85','B86','B87','B92','B93','B95','BFN','BRS','C13','C15','C16','C21','C23','C24','C27','C29','C34','C35','C41','C42','C44','C48','C52','CAR','CLB','CPT','DUR','ELS','GRJ','HRS','JNB','KDP','KIM','LAY','LTB','MHK','NCS','NLP','O09','O10','O12','O32','O34','O43','O57','O58','O64','O66','O67','O68','O69','O81','O82','O86','O89','O91','O95','O96','O97','O98','OHH','OTH','PCS','PLZ','PRT','PRY','PTG','PZB','RBG','RCB','RFN','SBU','STD','VEE','VRB','VRE','WIT','WLK','ZZS') then '1'
+		WHEN trackcode IN ('A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND') then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND trackcode IN ('A03','A06','A07','A08','A09','A10','A11','A12','A15','A17','A19','A35','A36','A44','A45','A46','A47','A48','A55','A61','A64','A65','A67','A68','A69','A70','A71','A72','A73','A74','A75','A76','A77','A78','A80','A81','A87','A88','A89','A91','A94','B01','B09','B13','B14','B15','B17','B21','B23','B25','B32','B40','B46','B49','B51','B52','B53','B54','B55','B60','B62','B65','B66','B67','B69','B70','B80','B82','B85','B86','B87','B92','B93','B95','BFN','BRS','C13','C15','C16','C21','C23','C24','C27','C29','C34','C35','C41','C42','C44','C48','C52','CAR','CLB','CPT','DUR','ELS','GRJ','HRS','JNB','KDP','KIM','LAY','LTB','MHK','NCS','NLP','O09','O10','O12','O32','O34','O43','O57','O58','O64','O66','O67','O68','O69','O81','O82','O86','O89','O91','O95','O96','O97','O98','OHH','OTH','PCS','PLZ','PRT','PRY','PTG','PZB','RBG','RCB','RFN','SBU','STD','VEE','VRB','VRE','WIT','WLK','ZZS','A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND')
+		ORDER BY ID ASC
+		) t
+		GROUP BY expressid
+		)
+		, '2,1', ''))) / LENGTH('2,1'), 0)
+    WHEN 8 THEN #skynet
+        IFNULL((LENGTH(
+		(SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '517' then '1'
+		WHEN trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND (trackcode IN ('517') OR (trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')))
+		ORDER BY ID ASC
+		) t
+		group by expressid)
+		) - LENGTH(REPLACE((
+		SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '517' then '1'
+		WHEN trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND (trackcode IN ('517') OR (trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')))
+		ORDER BY ID ASC
+		) t
+		GROUP BY expressid
+		)
+		, '2,1', ''))) / LENGTH('2,1'), 0)
+    WHEN 23 THEN #skynet local
+        IFNULL((LENGTH(
+		(SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '517' then '1'
+		WHEN trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND (trackcode IN ('517') OR (trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')))
+		ORDER BY ID ASC
+		) t
+		group by expressid)
+		) - LENGTH(REPLACE((
+		SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '517' then '1'
+		WHEN trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND (trackcode IN ('517') OR (trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')))
+		ORDER BY ID ASC
+		) t
+		GROUP BY expressid
+		)
+		, '2,1', ''))) / LENGTH('2,1'), 0)
+    WHEN 24 THEN #skynet business
+        IFNULL((LENGTH(
+		(SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '517' then '1'
+		WHEN trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND (trackcode IN ('517') OR (trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')))
+		ORDER BY ID ASC
+		) t
+		group by expressid)
+		) - LENGTH(REPLACE((
+		SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '517' then '1'
+		WHEN trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND (trackcode IN ('517') OR (trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')))
+		ORDER BY ID ASC
+		) t
+		GROUP BY expressid
+		)
+		, '2,1', ''))) / LENGTH('2,1'), 0)
+    WHEN 2590541559123122 THEN #dpd
+        IFNULL((LENGTH(
+		(SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '1' then '1'
+		WHEN trackcode = '5' then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND trackcode IN ('1', '5')
+		ORDER BY ID ASC
+		) t
+		group by expressid)
+		) - LENGTH(REPLACE((
+		SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '1' then '1'
+		WHEN trackcode = '5' then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND trackcode IN ('1', '5')
+		ORDER BY ID ASC
+		) t
+		GROUP BY expressid
+		)
+		, '2,1', ''))) / LENGTH('2,1'), 0)
+    WHEN 2266452665457878 THEN #itt
+        IFNULL((LENGTH(
+		(SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '1' then '1'
+		WHEN trackcode = 'b' then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND trackcode IN ('1', 'b')
+		ORDER BY ID ASC
+		) t
+		group by expressid)
+		) - LENGTH(REPLACE((
+		SELECT
+		CONCAT('2,', GROUP_CONCAT(u)) FROM (
+		SELECT
+		expressid,
+		CASE
+		WHEN trackcode = '1' then '1'
+		WHEN trackcode = 'b' then '2'
+		END AS u
+		FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = e.id AND expresscompanyid = e.expresscompanyid AND trackcode IN ('1', 'b')
+		ORDER BY ID ASC
+		) t
+		GROUP BY expressid
+		)
+		, '2,1', ''))) / LENGTH('2,1'), 0)
+END AS 'deliveryattempts', #尝试派送次数
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		(SELECT interiorcontent  FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND') ORDER BY ID ASC LIMIT 1)
+    WHEN 8 THEN #skynet
+		(SELECT interiorcontent  FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') ORDER BY ID ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT interiorcontent  FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') ORDER BY ID ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT interiorcontent  FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') ORDER BY ID ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT interiorcontent  FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('5') ORDER BY ID ASC LIMIT 1)
+    WHEN 2266452665457878 THEN #itt
+		(SELECT interiorcontent  FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('4') ORDER BY ID ASC LIMIT 1)
+END AS '3rd1deliveryfailedreason', #第三方快递公司派送失败原因
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND')) > 1,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND') ORDER BY ID ASC LIMIT 2) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 8 THEN #skynet
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')) > 1,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') ORDER BY ID ASC LIMIT 2) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 23 THEN #skynet local
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')) > 1,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') ORDER BY ID ASC LIMIT 2) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 24 THEN #skynet business
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')) > 1,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') ORDER BY ID ASC LIMIT 2) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 2590541559123122 THEN #dpd
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('5')) > 1,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('5') ORDER BY ID ASC LIMIT 2) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 2266452665457878 THEN #itt
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('4')) > 1,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('4') ORDER BY ID ASC LIMIT 2) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+END AS '3rd2deliveryfailedreason', #第三方快递公司第二次派送失败原因
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND')) > 2,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('A34','B02','B03','B04','B05','B06','B07','B08','B41','B42','B64','B75','B76','B77','B84','B88','B94','C19','C20','CCL','CCQ','EFL','FD2','FD3','FD4','FD5','FD6','FD7','LEF','NAA','NOC','NOH','NOT','O44','O45','OOT','PAC','PIO','PIP','U01','U02','U03','U04','U05','U06','U07','U08','U10','U11','U12','U13','U14','U52','UND') ORDER BY ID ASC LIMIT 3) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 8 THEN #skynet
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')) > 2,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') ORDER BY ID ASC LIMIT 3) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 23 THEN #skynet local
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')) > 2,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') ORDER BY ID ASC LIMIT 3) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 24 THEN #skynet business
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2')) > 2,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode IN ('8', '4', '12', '16', '21','2') ORDER BY ID ASC LIMIT 3) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 2590541559123122 THEN #dpd
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('5')) > 2,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('5') ORDER BY ID ASC LIMIT 3) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+    WHEN 2266452665457878 THEN #itt
+		IF((SELECT COUNT(1) FROM buffaloex_delivery.expressrecord WHERE expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('4')) > 2,
+		(SELECT interiorcontent FROM (SELECT * FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('4') ORDER BY ID ASC LIMIT 3) T ORDER BY T.ID DESC LIMIT 1),
+        ''
+        )
+END AS '3rd3deliveryfailedreason', #第三方快递公司第三次派送失败原因
+CASE obd.expresscompanyid
+	WHEN 2 THEN #fastway
+		(SELECT interiorcontent FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('DGE', 'HIJ', 'CLM') ORDER BY ID ASC LIMIT 1)
+    WHEN 8 THEN #skynet
+		(SELECT interiorcontent FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode = '19' ORDER BY ID ASC LIMIT 1)
+    WHEN 23 THEN #skynet local
+		(SELECT interiorcontent FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode = '19' ORDER BY ID ASC LIMIT 1)
+    WHEN 24 THEN #skynet business
+		(SELECT interiorcontent FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode = '531' AND tracksubcode = '19' ORDER BY ID ASC LIMIT 1)
+    WHEN 2590541559123122 THEN #dpd
+		(SELECT interiorcontent FROM buffaloex_delivery.expressrecord WHERE createtime >= obd.lasttime AND createtime < obd.nexttime AND expressid = obd.expressid AND expresscompanyid = obd.expresscompanyid AND trackcode IN ('5') ORDER BY ID ASC LIMIT 1)
+END AS 'note', #第三方快递公司丢失原因
+sh.name AS 'outbounddc', #出库仓库名称
+(SELECT province FROM buffaloex_address.citypostcode WHERE city = e.receivecity AND suburb = e.receivesuburb AND postcode = e.receivepostcode ORDER BY ID DESC LIMIT 1) AS 'province', #收件人省份
+e.receivecity AS 'receivecity', #收件人城市
+da.name AS 'geofence' #收件人地址geofence
+FROM
+outbounddeliveryorderdetail obd
+LEFT JOIN buffaloex_delivery.express e ON e.id = obd.expressid
+LEFT JOIN buffaloex_delivery.expresscompany ec ON ec.id = obd.expresscompanyid
+LEFT JOIN buffaloex_delivery.expressextend et ON et.expressid = obd.expressid
+LEFT JOIN buffaloex_delivery.storehouse sh ON sh.id = obd.hubid
+LEFT JOIN buffaloex_delivery.deliveryarea da ON da.id = e.deliveryareaid
+WHERE
+obd.createtime >= 1717192800000
+AND obd.expresscompanyid != 3 #排除buffalo派送
+) T
+) M
