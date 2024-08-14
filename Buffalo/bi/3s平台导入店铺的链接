@@ -1,0 +1,5 @@
+SELECT c.code AS '客户编码',CONCAT('https://shop.shopshipshake.com/search?productid=',s.shopproducid) AS '商品链接'
+FROM customer c
+LEFT JOIN shopifyproduct s 
+ON c.userid = s.clientid
+WHERE c.code = 'EI0330'
