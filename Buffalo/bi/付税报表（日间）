@@ -1,0 +1,52 @@
+/*
+Daytime New POP：
+Bank Bill/POP：5PM南非时间这个时点跑数，计算新出现在POP页面的凭证数，出现在页面的时间在统计时间期间：今天中午12AM-今天5PM（南非时间）
+*/
+SELECT CURDATE() as belong_date,
+       FROM_UNIXTIME(t.uploadprooffirsttime/1000-6*3600,'%Y-%m-%d') as stat_date,
+       FROM_UNIXTIME(t.uploadprooffirsttime/1000-6*3600,'%Y-%m-%d %H:%i:%s') as stat_time,
+		   t.id,
+			 t.batchnumber as reference,
+		   e.expressnumber,
+			 e.companyname,
+			 u.`name` as dealproofusername,
+			 'Daytime' as type,
+       'Proof of tax payment' as source_data
+FROM buffaloex2.taxpackageinfo t
+LEFT JOIN buffaloex2.user u
+ON t.dealproofuserid = u.id
+LEFT JOIN 
+(
+  SELECT taxpackageinfoid,
+		     GROUP_CONCAT(expressnumber) as expressnumber,
+			   GROUP_CONCAT(DISTINCT sendcompany) as companyname
+	FROM buffaloex2.express
+	GROUP BY taxpackageinfoid
+)e
+ON t.id = e.taxpackageinfoid
+WHERE t.uploadprooftime > 0 AND t.dealproofresult = 0 AND t.dealprooftime = 0 AND t.finishtime = 0
+  AND FROM_UNIXTIME(t.uploadprooffirsttime/1000-6*3600,'%Y-%m-%d %H:%i:%s') >= DATE_FORMAT(CURDATE(),'%Y-%m-%d 12:00:00')
+	AND FROM_UNIXTIME(t.uploadprooffirsttime/1000-6*3600,'%Y-%m-%d %H:%i:%s') < DATE_FORMAT(CURDATE(),'%Y-%m-%d 17:00:00')
+
+UNION ALL
+
+/*
+Daytime New Unkown：
+Bank Bill/Unkown：5PM南非时间这个时点跑数，计算新出现在Unkown页面的未知进账数，出现在页面的时间在统计时间期间：今天中午12AM-今天5PM（南非时间）期间
+*/
+SELECT CURDATE() as belong_date,
+       FROM_UNIXTIME(t.createtime/1000-6*3600,'%Y-%m-%d') as stat_date,
+       FROM_UNIXTIME(t.createtime/1000-6*3600,'%Y-%m-%d %H:%i:%s') as stat_time,
+		   t.id,
+			 t.reference,
+		   e.expressnumber,
+			 e.sendcompany as companyname,
+			 SUBSTRING_INDEX(t.result,':',-1) as dealproofusername,
+			 'Daytime' as type,
+       'Unknown' as source_data
+FROM buffaloex2.fnbbalancerecord t
+LEFT JOIN buffaloex2.express e
+ON t.workid = e.id
+WHERE FROM_UNIXTIME(t.createtime/1000-6*3600,'%Y-%m-%d %H:%i:%s') >= DATE_FORMAT(CURDATE(),'%Y-%m-%d 12:00:00')
+	AND FROM_UNIXTIME(t.createtime/1000-6*3600,'%Y-%m-%d %H:%i:%s') < DATE_FORMAT(CURDATE(),'%Y-%m-%d 17:00:00')
+    AND companyid = 1 AND t.`status` NOT IN (10)
