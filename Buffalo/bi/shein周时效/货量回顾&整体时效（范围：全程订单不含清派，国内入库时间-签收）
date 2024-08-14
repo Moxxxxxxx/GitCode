@@ -1,0 +1,23 @@
+select 
+week(DATE_SUB(date(cninboud),INTERVAL 1 day))+1 as week_day
+,MIN(date(cninboud)) as stat_date
+,MAX(date(cninboud)) as end_date
+,count(1) as package_num
+,sum(received) as received_total_num
+,sum(if(spend_days <= 14 and spend_days >= 0 and received = 1,1,0)) as received_14d_num
+,sum(if(received = 1,IF(spend_days<0,0,spend_days),0)) as received_spend_days
+from 
+(
+  select e.expressnumber,
+	FROM_UNIXTIME(ea.cninboundtime/1000,'%Y-%m-%d %H:%i:%s') as cninboud,
+	FROM_UNIXTIME(ea.signedtime/1000,'%Y-%m-%d %H:%i:%s') as receive,
+	(ea.signedtime - ea.cninboundtime)/1000/3600/24 as spend_days,
+  if(e.status=80,1,0) as received
+  from buffaloex2.express e
+  left join buffaloex2.expressaging ea on e.id = ea.expressid 
+  where e.ordertype != 110
+  and e.clientid in (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303)
+	and FROM_UNIXTIME(ea.cninboundtime/1000,'%Y-%m-%d %H:%i:%s') >= '2024-03-04 00:00:00'
+) t
+group by week(DATE_SUB(date(cninboud),INTERVAL 1 day))+1
+order by week(DATE_SUB(date(cninboud),INTERVAL 1 day))+1
