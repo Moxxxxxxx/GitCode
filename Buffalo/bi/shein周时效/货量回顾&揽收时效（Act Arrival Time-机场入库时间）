@@ -1,0 +1,25 @@
+select 
+week(DATE_SUB(date(cninboud),INTERVAL 1 day))+1 as week_day
+, MIN(date(cninboud)) as stat_date
+, MAX(date(cninboud)) as end_date
+, sum(if (ordertype = 110,1,0)) as `自主头程包裹数量`
+, sum(if (ordertype != 110,1,0)) as `全程包裹数量`
+, sum(if(spend_days <= 2 and spend_days >= 0 and ordertype = 110,1,0)) as `自主头程2D`
+, sum(if(spend_days <= 2 and spend_days >= 0 and ordertype != 110,1,0)) as `全程2D`
+, sum(if(spend_days <= 4 and spend_days >= 0 and ordertype = 110,1,0)) as `自主头程4D`
+, sum(if(spend_days <= 4 and spend_days >= 0 and ordertype != 110,1,0)) as `全程4D`
+, sum(if(ordertype = 110,IF(spend_days < 0,0,spend_days),0)) as `自主头程时效`
+, sum(if(ordertype != 110,IF(spend_days < 0,0,spend_days),0)) as `全程时效`
+from (
+select e.expressnumber,
+  FROM_UNIXTIME(ea.arrivaltime/1000+3600*6,'%Y-%m-%d %H:%i:%s') as cninboud,
+	FROM_UNIXTIME(e.africareceivetime/1000,'%Y-%m-%d %H:%i:%s') as receive,
+	(e.africareceivetime/1000 - (ea.arrivaltime/1000+3600*6))/3600/24 as spend_days,
+  e.ordertype as ordertype
+from buffaloex2.express e
+left join buffaloex2.expressaging ea on e.id = ea.expressid 
+where e.clientid in (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303)
+	and FROM_UNIXTIME(ea.arrivaltime/1000+3600*6,'%Y-%m-%d %H:%i:%s') >= '2024-03-04 00:00:00'
+	)t
+group by week(DATE_SUB(date(cninboud),INTERVAL 1 day))+1
+order by week(DATE_SUB(date(cninboud),INTERVAL 1 day))+1
