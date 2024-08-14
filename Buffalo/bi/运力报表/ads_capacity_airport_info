@@ -1,0 +1,161 @@
+INSERT INTO `ads_capacity_airport_info` 
+WITH t1 as 
+(
+  select IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1)) as stat_date
+  UNION
+  select IF(HOUR(NOW()) > 6,DATE_ADD(CURRENT_DATE(), 1),DATE_SUB(CURRENT_DATE(), 1)) as stat_date
+  UNION
+  select IF(HOUR(NOW()) > 6,DATE_ADD(CURRENT_DATE(), 2),DATE_SUB(CURRENT_DATE(), 1)) as stat_date
+),
+t2 as 
+(
+  select t1.blnumber,if(count(t1.blnumber) > 1,1,0) as is_batch
+  from buffaloex2.flightdetail t1
+  join buffaloex2.blnumber t2
+  on t1.blnumber =t2.blnumber
+  group by t1.blnumber
+)
+
+SELECT t1.stat_date,
+	   a.curr_day_01,
+	   b.curr_day_02,
+	   c.prev_day_01,
+	   d.prev_day_02,
+	   e.prev_day_03,
+	   f.prev_day_033,
+	   g.prev_day_04,
+	   h.prev_day_05
+FROM t1
+LEFT JOIN
+(
+  -- 预计运抵提单
+  select date(from_unixtime(if(secondarrivaltime > 0,secondarrivaltime,firstarrivaltime)/1000)) as date,
+	     count(id) as curr_day_01 
+  from buffaloex2.blnumber 
+  where transportmode = 0
+  GROUP BY date(from_unixtime(if(secondarrivaltime > 0,secondarrivaltime,firstarrivaltime)/1000))
+) a
+ON a.date = t1.stat_date
+LEFT JOIN
+(
+  -- 预计运抵订单量
+  select b.date,
+	     count(e.id) as curr_day_02
+  from buffaloex2.express e
+  JOIN
+  (
+	select blnumber,date(from_unixtime(if(secondarrivaltime > 0,secondarrivaltime,firstarrivaltime)/1000)) as date
+    from buffaloex2.blnumber 
+    where transportmode = 0 
+  )b
+  ON e.blnumber = b.blnumber
+  GROUP BY b.date
+) b
+ON b.date = t1.stat_date
+LEFT JOIN
+(
+  -- 实际运抵提单
+  select date(from_unixtime(if(secondarrivaltimereal > 0,secondarrivaltimereal,firstarrivaltimereal)/1000)) as date,
+	     count(blnumber) as prev_day_01
+  from buffaloex2.flightdetail 
+  where ((secondarrivaltime = 0 and firstarrivaltimereal > 0) or (secondarrivaltime > 0 and secondarrivaltimereal > 0))-- 没有二程且一程实际抵达 或 有二程且二程实际抵达
+  GROUP BY date(from_unixtime(if(secondarrivaltimereal > 0,secondarrivaltimereal,firstarrivaltimereal)/1000))
+) c
+ON c.date = t1.stat_date
+LEFT JOIN
+(
+  -- 实际运抵运单
+  select date,sum(prev_day_02) as prev_day_02
+  from
+  (
+    -- 不分批
+    select date(from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal)/1000)) as date,
+           sum(b.totalnumber) as prev_day_02
+    from buffaloex2.flightdetail f
+    join buffaloex2.blnumber b
+    on f.blnumber = b.blnumber
+    join t2
+    on f.blnumber = t2.blnumber
+    where t2.is_batch = 0
+      and ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0))-- 没有二程且一程实际抵达 或 有二程且二程实际抵达
+    GROUP BY date(from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal)/1000))
+
+    union all
+    -- 分批
+    select date(from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal)/1000)) as date,
+	       sum(cast((f.bags/b.totalboxnumber)*b.totalnumber as int)) as prev_day_02
+    from buffaloex2.flightdetail f
+    join buffaloex2.blnumber b
+    on f.blnumber = b.blnumber
+    join t2
+    on f.blnumber = t2.blnumber
+    where t2.is_batch = 1
+      and ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0))-- 没有二程且一程实际抵达 或 有二程且二程实际抵达
+    GROUP BY date(from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal)/1000))
+  )tmp
+  group by date 
+) d
+ON d.date = t1.stat_date
+LEFT JOIN
+(
+  -- 机场取件提单
+  select date(from_unixtime(collecttime/1000)) as date,
+	     count(blnumber) as prev_day_03
+  from buffaloex2.flightdetail 
+  GROUP BY date(from_unixtime(collecttime/1000))
+) e
+ON e.date = t1.stat_date
+LEFT JOIN
+(
+  -- 机场取件运单
+  select date,sum(prev_day_033) as prev_day_033
+  from
+  (
+    -- 不分批
+    select date(from_unixtime(f.collecttime/1000)) as date,
+           sum(b.totalnumber) as prev_day_033
+    from buffaloex2.flightdetail f
+    join buffaloex2.blnumber b
+    on f.blnumber = b.blnumber
+    join t2
+    on f.blnumber = t2.blnumber
+    where t2.is_batch = 0
+    GROUP BY date(from_unixtime(f.collecttime/1000))
+
+    union all
+    -- 分批
+    select date(from_unixtime(f.collecttime/1000)) as date,
+	       sum(cast((f.bags/b.totalboxnumber)*b.totalnumber as int)) as prev_day_033
+    from buffaloex2.flightdetail f
+    join buffaloex2.blnumber b
+    on f.blnumber = b.blnumber
+    join t2
+    on f.blnumber = t2.blnumber
+    where t2.is_batch = 1
+    GROUP BY date(from_unixtime(f.collecttime/1000))
+  )tmp
+  group by date 
+) f
+ON f.date = t1.stat_date
+LEFT JOIN
+(
+  -- 机场入库运单
+  select date(from_unixtime(e.zainboundtime/1000-6*3600)) as date,
+	     count(e.expressnumber) as prev_day_04
+  from buffaloex2.expressaging e 
+  left join buffaloex2.express ex on e.expressid = ex.id
+  where ex.clientid not in ('2272458790721303','2815762535679143')
+  GROUP BY date(from_unixtime(e.zainboundtime/1000-6*3600))
+) g
+ON g.date = t1.stat_date
+LEFT JOIN
+(
+  -- 机场出库运单
+  select date(from_unixtime(ea.airportoutboundtime/1000-6*3600)) as date,
+	     count(ea.expressnumber) as prev_day_05
+  from buffaloex2.expressaging ea 
+  left join buffaloex2.express ex on ea.expressid = ex.id
+  where ex.transportmode < 10 and ex.clientid not in ('2272458790721303','2815762535679143')
+  GROUP BY date(from_unixtime(ea.airportoutboundtime/1000-6*3600))
+) h
+ON h.date = t1.stat_date
