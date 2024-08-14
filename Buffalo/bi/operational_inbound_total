@@ -1,0 +1,21 @@
+SELECT createtime,
+       name,
+       'Today Inbound' as type,
+       today_inbound as inbound_qty
+FROM `ads`.`ads_hub_dashboard_data`
+
+UNION ALL
+
+SELECT createtime,
+       name,
+       'Excessive Inbound' as type,
+       excessive_inbound as inbound_qty
+FROM `ads`.`ads_hub_dashboard_data`
+
+UNION ALL
+
+SELECT createtime,
+       name,
+       'Delaying Inbound' as type,
+       delaying_inbound as inbound_qty
+FROM `ads`.`ads_hub_dashboard_data`
