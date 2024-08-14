@@ -1,0 +1,336 @@
+truncate table `ads`.`ads_all_fulfillment_efficiency` 
+INSERT INTO `ads`.`ads_all_fulfillment_efficiency` 
+
+with t1 as (
+  select b.blnumber
+  , b.totalnumber 
+  , b.collecttime as air_collecttime
+  , date(from_unixtime(b.collecttime/1000)) as collect_day  
+  , if(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal) as arrivaltime
+  , f.last_arrivaltime
+  , (case when b.collecttime > 0 then (b.collecttime - if(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal))/1000/3600 end) as air_span_hours
+  , (case when b.collecttime > 0 then (b.collecttime - f.last_arrivaltime)/1000/3600 end) as last_air_span_hours
+  , from_unixtime(if(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal)/1000, '%Y-%m-%d %H:%i:%s') as air_arrivaltime
+  , from_unixtime(f.last_arrivaltime/1000, '%Y-%m-%d %H:%i:%s') as last_air_arrivaltime
+  , b.operabletime
+  , IF(if(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal)  = f.last_arrivaltime,0,1) as is_much_flight
+  from buffaloex2.blnumber b
+	left join 
+	(
+	  select blnumber
+		       , if(line = 1,firstarrivaltimereal,secondarrivaltimereal) as last_arrivaltime
+					 , row_number()over(partition by blnumber order by arrivaltime desc) as rn 
+		from buffaloex2.flightdetail
+		where if(line = 1,firstarrivaltimereal,secondarrivaltimereal)>0
+	)f
+	on b.blnumber = f.blnumber
+  where f.rn =1 and b.collecttime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 100 DAY, '%Y-%m-%d'))) * 1000 -- {{{#100天前日期}}}
+)
+, t2 as (
+    select e.expressnumber 
+		, e.status
+		, e.blnumber
+    , e.africareceivetime 
+    , e.deliverabletime 
+    , e2.airportoutboundtime 
+    , e2.signedtime
+    , CASE when e.status = 5 THEN 'Order Exception'
+	         when e.status = 8 THEN 'Waiting for payment'
+	         when e.status = 10 THEN 'Order Confirmed'
+	         when e.status = 20 THEN 'CN Inbound'
+	         when e.status = 21 THEN 'CN Outbound'
+           when e.status = 23 THEN 'Warehouse transfer'
+           when e.status = 30 THEN 'CN Declared-Awaiting departure confirmation'
+           when e.status = 40 THEN 'International Shipping'
+	         when e.status = 50 THEN 'Arrival at South Africa customs'
+	         when e.status = 67 THEN 'Scanned in at SA warehouse'
+	         when e.status = 68 THEN 'Picking...-拣货中'
+	         when e.status = 69 THEN 'Packaging complete'
+	         when e.status = 70 THEN 'Dispatching...-目的国落地配送中'
+	         when e.status = 73 THEN 'In the transit'
+	         when e.status = 80 THEN 'Client Received'
+	         when e.status = 90 THEN 'Cancel-取消'
+	         when e.status = 100 THEN 'Shout out-关单'
+      end as admin_status
+    , b.entersiteabletime
+		, case when e.clientid IN (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303) THEN 'SHEIN'
+		       when e.clientid IN (2689675408624712) THEN 'TEMU'
+		  ELSE 'ALL' END as customer_name
+		, e.receivecity as city
+		, e.receivepostcode as postcode
+		, e.receivesuburb as suburb
+		, GREATEST(e2.zainboundtime,e2.taxpaidtime,e2.clearancefinishtime) as  intaxclearanceytime
+        , e.createtime
+        , e2.taxpaidtime
+  from buffaloex2.express e 
+  inner join buffaloex2.blnumber b on e.blnumber  = b.blnumber 
+  join buffaloex2.expressaging e2 on e2.expressid = e.id 
+  left join buffaloex2.customer c on e.clientid = c.userid
+  where e.status != 90
+    and if(b.line = 1,b.firstarrivaltimereal ,b.secondarrivaltimereal) > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 100 DAY, '%Y-%m-%d'))) * 1000 -- {{{#100天前日期}}}
+)
+, r1 as (
+  SELECT expressnumber
+  , expressid
+  , IF(company is null or length(company) = 0,null,company) as company
+  , sendstatus
+  , from_unixtime(if(inboundtime/1000-6*3600>0,inboundtime/1000-6*3600,0), '%Y-%m-%d %H:%i:%s') as inboundtime
+  , from_unixtime(if(outboundtime/1000-6*3600>0,outboundtime/1000-6*3600,transittime/1000-6*3600), '%Y-%m-%d %H:%i:%s') as outboundtime
+  , from_unixtime(if(transittime/1000-6*3600>0,transittime/1000-6*3600,0), '%Y-%m-%d %H:%i:%s') as transittime
+  , from_unixtime(if(finishtime/1000-6*3600>0,finishtime/1000-6*3600,0), '%Y-%m-%d %H:%i:%s') as finishtime
+  , inboundtime as inboundtime_ts
+  , outboundtime as outboundtime_ts
+  , finishtime as finishtime_ts
+  , (a.outboundtime-a.inboundtime)/1000/3600 as ou_in_span_hours
+  , (finishtime-a.outboundtime)/1000/3600 as fi_ou_span_hours
+  , null as ou_branchin_span_hours
+  , CASE WHEN company = 'buffalo' THEN from_unixtime(if(outboundtime/1000-6*3600>0,outboundtime/1000-6*3600,transittime/1000-6*3600), '%Y-%m-%d %H:%i:%s') ELSE null END AS jhb_Driver_outboundtime
+  , CASE WHEN company != 'buffalo' THEN from_unixtime(if(outboundtime/1000-6*3600>0,outboundtime/1000-6*3600,transittime/1000-6*3600), '%Y-%m-%d %H:%i:%s') ELSE null END AS jhb_3PL_outboundtime
+  , (CASE WHEN company = 'buffalo' THEN a.outboundtime ELSE null END - a.inboundtime)/1000/3600 as in_Driver_span_hours
+  , (CASE WHEN company != 'buffalo' THEN a.outboundtime ELSE null END - a.inboundtime)/1000/3600 as in_3PL_span_hours
+  from 
+  (
+	  select b.expressnumber
+           , a.expressid
+					 , b.sendstatus
+					 , case when b.expresscompanyid =3 then 'buffalo'
+                  when b.expresscompanyid =2 then 'fastway'
+                  when b.expresscompanyid =2266452665457878 then 'itt'
+                  when b.expresscompanyid = 7 then 'paxi'
+                  when b.expresscompanyid =8 then 'skynet'
+                  when b.expresscompanyid =2590541559123122 then 'dpdlaser'
+             else '' end as company
+					 , if(a.outboundtime>0,a.outboundtime,a.transittime) as outboundtime
+					 , if(a.inboundtime>0,a.inboundtime,a.cantransittime) as inboundtime
+           , a.transittime
+					 , finishtime
+	  from buffaloex_delivery.expresstimerecord a 
+	  left join buffaloex_delivery.express b on a.expressid=b.id
+    where a.hubid = 823519816802652
+        and b.sendstatus < 80
+	    and (a.outboundtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- {{{#90天前日期}}}
+          or a.transittime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000) -- {{{#90天前日期}}}
+  )a
+)
+, r2 as (
+  select expressnumber
+	, sendstatus
+	, expressid
+	, returndate
+	, signed_time
+	, dispatch_time
+  from 
+	(
+    select e.expressnumber 
+		, e.sendstatus 
+		, e.id as expressid 
+    , e.returndate 
+    , if(e.sendstatus = 70, e.finishtime, NULL) as signed_time
+    , e2.createtime as dispatch_time 
+    , row_number() over(partition by e.expressnumber order by e2.createtime desc) as rn 
+    from buffaloex_delivery.express e 
+    join buffaloex_delivery.expressrecord e2 on e2.expressid = e.id and e2.del = 0 and e2.module like  '%App>>Dispatch Pick'
+    where e.sendstatus < 80
+	  and e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- {{{#90天前日期}}}
+  )a 
+  where rn=1
+)
+, r3 as (
+  select expressnumber
+	, sendstatus
+	, expressid
+	, returndate
+	, signed_time
+	, dispatch_time
+  from 
+	(
+    select e.expressnumber 
+		, e.sendstatus 
+		, e.id as expressid 
+    , e.returndate 
+    , if(e.sendstatus = 70, e.finishtime, NULL) as signed_time
+    , e2.createtime as dispatch_time 
+    , row_number() over(partition by e.expressnumber order by e2.createtime) as rn 
+    from buffaloex_delivery.express e 
+    join buffaloex_delivery.expressrecord e2 on e2.expressid = e.id and e2.del = 0	
+	       and (e2.interiorcontent like  '%The parcel has been allocated to trip. Site: JNB%' 
+			 	      or e2.content like '%Waybill data captured%' 
+				      or e2.content like '%picked up%'   		
+				      or e2.content like '%Inhouse parcel scan%' 
+				      or e2.content like '%in-house%' 
+				      or trackcode in ('9','10'))
+    where e.sendstatus < 80
+	  and e2.createtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 -- {{{#90天前日期}}}
+  )a 
+  where rn=1
+)
+
+
+select res1.expressnumber
+, res1.blnumber
+, res1.customer_name                 -- "客户名称"  -- wyy新增加
+, res1.city                          -- "收件人城市" -- wyy新增加
+, res1.postcode                      -- "收件人邮编" -- wyy新增加
+, res1.suburb                        -- "收件人区域" -- wyy新增加
+, res1.admin_status
+, res1.air_arrivaltime 			         -- "机场到达"
+, res1.air_pickup	  			           -- "机场取件"
+, res1.air_entersiteabletime         -- "提单可操作" -- wyy新增加
+, res1.air_inbound	  			         -- "机场入库" 
+, res1.air_outbound	  			         -- "admin机场出库" 
+, res1.signdate	      			         -- "签收" 
+, res1.signedtime
+, res1.air_arrivaltime_sign	         -- "机场到达-签收" 
+, res1.air_span_hours	      	       -- "机场到达-机场取件" 
+, res1.air_receivetime_inbound	     -- "机场取件-机场入库"
+, res1.air_entersiteabletime_inbound -- "提单可操作-机场入库" -- wyy新增加
+, res1.air_inbound_outbound		       -- "机场入库-机场出库"
+, res1.airportoutboundtime 
+
+
+, res2.expressid 
+, res2.company 
+, res2.jhb_dc_inboundtime         -- "JHB DC 入库"
+, res2.jhb_Driver_outboundtime    -- "JHB Driver出库" -- wyy新增加
+, res2.jhb_3PL_outboundtime       -- "JHB 3PL出库" -- wyy新增加
+, res2.jhb_dc_outboundtime 	      -- "JHB DC 出库"
+, res2.jhb_dc_transittime 	      -- "JHB DC 转运"
+, res2.branch_inboundtime         -- "Branch入库" -- wyy新增加
+, res2.finishtime 	              -- "签收时间"
+, res2.in_Driver_span_hours       -- "JHB DC 入库-JHB Driver出库" -- wyy新增加
+, res2.in_3PL_span_hours          -- "JHB DC 入库-JHB 3PL出库" -- wyy新增加
+, res2.ou_in_span_hours 	        -- "JHB DC 入库-JHB DC 出库"
+, res2.ou_branchin_span_hours     -- "JHB DC 出库-Branch入库" -- wyy新增加
+, res2.fi_ou_span_hours 	        -- "JHB DC 出库-派送完成"
+, res2.dispatch_time 	            
+, res2.inboundtime_ts 
+, res2.courier_pickup 	          -- "JHB DC 出库-快递员取件"
+, res2.courier_dispatch 	        -- "快递员取件-派送完成"
+, res2.courier_pl_pickup 	        -- "JHB DC 出库-3pl快递员取件"
+, res2.courier_pl_dispatch 	      -- "3pl快递员取件-派送完成"
+, res2.delivery_status 
+, res2.courier_pickup_time 		    -- "快递员取件时间"
+, res2.courier_pl_pickup_time 	  -- "3pl快递员取件时间"
+, (res2.inboundtime_ts-res1.airportoutboundtime)/1000/3600 as air_out_jhb_in		-- "机场出库-JHB入库"
+
+, res3.province                      -- "收件人省份" -- wyy新增加
+, res1.intaxclearanceytime -- "已入库已付税已清关" -- wyy新增加
+, res1.air_inbound_outbound_new -- "可操作时间-出库时间" -- wyy新增加
+, res1.operabletime -- "清关+付税率≥50%" -- wyy新增加
+, res1.air_receivetime_inbound_new -- "可操作时间-入库时间" -- wyy新增加
+, res1.air_arrivaltime_inbound  "机场运抵-机场入库" -- wyy新增加
+, res1.air_inbound_sign -- "机场入库-派送成功" -- wyy新增加
+, res1.createtime
+, res1.is_taxpaid
+, res1.air_inbound_taxpaid
+, res1.status
+, res1.last_air_arrivaltime
+, res1.last_air_span_hours
+, res1.is_much_flight
+, res1.last_air_arrivaltime_sign
+, res1.last_air_arrivaltime_inbound
+from 
+(
+  select b.expressnumber
+  , a.blnumber
+  , b.admin_status
+  , a.air_arrivaltime
+  , from_unixtime(a.air_collecttime/1000, '%Y-%m-%d %H:%i:%s') as air_pickup
+  , from_unixtime(b.africareceivetime/1000-6*3600, '%Y-%m-%d %H:%i:%s') as air_inbound
+  , from_unixtime(b.airportoutboundtime/1000-6*3600, '%Y-%m-%d %H:%i:%s') as air_outbound
+  , from_unixtime(IF((b.signedtime/1000-6*3600)>0,b.signedtime/1000-6*3600,0), '%Y-%m-%d %H:%i:%s') as signdate
+  , b.signedtime
+  , (b.signedtime -a.arrivaltime)/1000/3600-6 as air_arrivaltime_sign
+  , a.air_span_hours
+  , (b.africareceivetime -a.air_collecttime)/1000/3600-6 as air_receivetime_inbound
+  , case when (airportoutboundtime >0 and airportoutboundtime > africareceivetime) then (airportoutboundtime - africareceivetime)/1000/3600
+         when (airportoutboundtime >0 and airportoutboundtime < africareceivetime) then 0
+    end as air_inbound_outbound
+  , airportoutboundtime
+  , from_unixtime(a.operabletime/1000-3600*6, '%Y-%m-%d %H:%i:%s') as air_entersiteabletime
+  , if(b.africareceivetime < a.operabletime,0,(b.africareceivetime - a.operabletime)/1000/3600) as air_entersiteabletime_inbound
+	, customer_name
+	, city
+	, postcode
+  , suburb
+	-- 新增字段
+	-- 机场入库->机场出库
+	, from_unixtime(IF(intaxclearanceytime < africareceivetime,africareceivetime,intaxclearanceytime)/1000-6*3600, '%Y-%m-%d %H:%i:%s') as intaxclearanceytime -- 已入库已付税已清关
+	, case when (airportoutboundtime >0 and airportoutboundtime > africareceivetime and intaxclearanceytime < africareceivetime) then (airportoutboundtime - africareceivetime)/1000/3600
+	       when (airportoutboundtime >0 and airportoutboundtime > africareceivetime and intaxclearanceytime >= africareceivetime) then (airportoutboundtime - intaxclearanceytime)/1000/3600
+         when (airportoutboundtime >0 and airportoutboundtime < africareceivetime) then 0
+    end as air_inbound_outbound_new -- 可操作时间-出库时间
+	-- 机场取件->机场入库
+	, IF(from_unixtime(operabletime/1000-3600*6,'%Y-%m-%d %H:%i:%s') < from_unixtime(air_collecttime/1000, '%Y-%m-%d %H:%i:%s'),from_unixtime(air_collecttime/1000, '%Y-%m-%d %H:%i:%s'),from_unixtime(operabletime/1000-3600*6,'%Y-%m-%d %H:%i:%s')) as operabletime
+	, IF((b.africareceivetime/1000-3600*6 -IF(operabletime/1000-3600*6 < air_collecttime/1000,air_collecttime/1000,operabletime/1000-3600*6))/3600 < 0,0,(b.africareceivetime/1000-3600*6 -IF(operabletime/1000-3600*6 < air_collecttime/1000,air_collecttime/1000,operabletime/1000-3600*6))/3600) as air_receivetime_inbound_new
+    -- 机场运抵->机场入库
+    , (b.africareceivetime -a.arrivaltime)/1000/3600-6 as air_arrivaltime_inbound
+    -- 机场入库->派送成功
+    , (b.signedtime -b.africareceivetime)/1000/3600 as air_inbound_sign
+    , now() as createtime
+    , if(b.taxpaidtime<=b.africareceivetime,1,0) as is_taxpaid 
+    , if(b.taxpaidtime<=b.africareceivetime,0,(b.taxpaidtime-b.africareceivetime)/1000/3600) as air_inbound_taxpaid -- 机场入库时间->付税时间
+	, b.status
+    , a.last_air_arrivaltime
+    , a.last_air_span_hours
+    , a.is_much_flight
+    , (b.signedtime -a.last_arrivaltime)/1000/3600-6 as last_air_arrivaltime_sign
+    , (b.africareceivetime -a.last_arrivaltime)/1000/3600-6 as last_air_arrivaltime_inbound
+  from t1 a 
+  left join t2 b 
+  on a.blnumber= b.blnumber
+) res1
+
+left join
+
+(
+  select distinct a.expressnumber
+  , a.expressid
+  , a.company
+  , a.inboundtime as jhb_dc_inboundtime
+  , a.outboundtime as jhb_dc_outboundtime
+  , a.transittime as jhb_dc_transittime
+  , a.finishtime
+  , a.ou_in_span_hours
+  , a.fi_ou_span_hours
+  , b.dispatch_time
+  , a.inboundtime_ts
+  , null as branch_inboundtime
+  , a.ou_branchin_span_hours
+  , a.jhb_Driver_outboundtime
+  , a.jhb_3PL_outboundtime
+  , a.in_Driver_span_hours
+  , a.in_3PL_span_hours
+  , (b.dispatch_time - a.outboundtime_ts)/1000/3600 as courier_pickup
+  , (a.finishtime_ts - b.dispatch_time)/1000/3600 as courier_dispatch
+  , (c.dispatch_time - a.outboundtime_ts)/1000/3600 as courier_pl_pickup
+  , (a.finishtime_ts - c.dispatch_time)/1000/3600 as courier_pl_dispatch
+  , case a.sendstatus when -3 THEN 'Tax Unpaid and not committed Inbound'
+	                    when -2 THEN 'Tax Unpaid and not committed Confirmed'
+	                    when 1 THEN 'Unpaid Confirmed'
+	                    when 2 THEN 'Not Committed Confirmed'
+	                    when 3 THEN 'Not Committed Inbound'
+	                    when 5 THEN 'Order Confirmed-下单成功'
+	                    when 13 THEN 'Pick Complete-已取件'
+	                    when 17 THEN 'Pack Complete-打包完成'
+	                    when 20 THEN 'In the Transit-转运中'
+	                    when 30 THEN 'Inbound-已入库'
+	                    when 45 THEN 'Wait Delivery-待派送'
+	                    when 50 THEN 'Dispatching-派送中'
+	                    when 60 THEN 'The Second Delivery-二次派送'
+	                    when 64 THEN 'Returning-退货中'
+	                    when 65 THEN 'Return Goods-退货'
+	                    when 70 THEN 'Client Received-签收'
+	                    when 80 THEN 'Shut Out-关单'
+	                    when 90 THEN 'Cancel-取消'
+    end as delivery_status
+  , from_unixtime(if(b.dispatch_time/1000-6*3600>0,b.dispatch_time/1000-6*3600,0), '%Y-%m-%d %H:%i:%s') as courier_pickup_time
+  , from_unixtime(if(c.dispatch_time/1000-6*3600>0,c.dispatch_time/1000-6*3600,0), '%Y-%m-%d %H:%i:%s') as courier_pl_pickup_time
+  from r1 a 
+  left join r2 b on a.expressnumber=b.expressnumber
+  left join r3 c on a.expressnumber=c.expressnumber
+) res2
+on res1.expressnumber = res2.expressnumber
+LEFT JOIN `ads_address_info_d` res3
+on lower(res1.`city`) = lower(res3.`city`) and lower(res1.`suburb`) =lower(res3.`suburb`) and res1.`postcode` = res3.`postcode`
+where res1.expressnumber is not null
