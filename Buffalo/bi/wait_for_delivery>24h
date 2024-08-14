@@ -1,0 +1,44 @@
+select e.expressnumber,
+                         CASE when e.status = 5 THEN 'Order Exception'
+                  when e.status = 8 THEN 'Waiting for payment'
+                  when e.status = 10 THEN 'Order Confirmed'
+                  when e.status = 20 THEN 'CN Inbound'
+                  when e.status = 21 THEN 'CN Outbound'
+            when e.status = 23 THEN 'Warehouse transfer'
+            when e.status = 30 THEN 'CN Declared-Awaiting departure confirmation'
+            when e.status = 40 THEN 'International Shipping'
+                  when e.status = 50 THEN 'Arrival at South Africa customs'
+                  when e.status = 67 THEN 'Scanned in at SA warehouse'
+                  when e.status = 68 THEN 'Picking...-拣货中'
+                  when e.status = 69 THEN 'Packaging complete'
+                  when e.status = 70 THEN 'Dispatching...-目的国落地配送中'
+                  when e.status = 73 THEN 'In the transit'
+                  when e.status = 80 THEN 'Client Received'
+                  when e.status = 90 THEN 'Cancel-取消'
+                  when e.status = 100 THEN 'Shout out-关单'
+       end as status,
+                         er.content,
+                         er.module,
+                         IF(e.pickingbillid=0,'否','是') as isinpickinglist,
+                         FROM_UNIXTIME(a.zainboundtime/1000) as zainboundtime,
+                         FROM_UNIXTIME(a.taxpaidtime/1000) as taxpaidtime,
+                         FROM_UNIXTIME(a.clearancefinishtime/1000) as clearancefinishtime
+from buffaloex2.express e,buffaloex2.expressaging a
+left join 
+(
+  select expressid,content,module,row_number() over(partition by expressid order by createtime desc) as rn
+        from buffaloex2.expressrecord 
+)er
+on er.expressid = e.id and er.rn=1
+left join 
+  (
+    select expressnumber
+    from ads.ads_exception_total_detail_dd
+    group by expressnumber
+  )et
+  on e.expressnumber = et.expressnumber
+where e.id=a.expressid and et.expressnumber is null and e.status <90 and a.zainboundtime>0 and a.taxpaidtime>0 and a.clearancefinishtime>0 
+          and a.zaoutboundtime=0 and a.airportoutboundtime=0
+          and (UNIX_TIMESTAMP(NOW())*1000 - GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime))/1000/3600>24 -- 已入库已付税已清关未出库且超过24h
+          and e.discardssign = 0 and e.ordertype not in (70,90) and e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') and e.status = 67 and e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia holding状态 只保留Scanned in at SA warehouse状态 
+          and FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime)/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
