@@ -1,0 +1,59 @@
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+TRUNCATE TABLE `ads`.`ads_express_fulfillment_efficiency_linehaul`
+INSERT INTO `ads`.`ads_express_fulfillment_efficiency_linehaul` 
+SELECT t1.expressnumber, -- 订单号
+       t2.name, -- 仓库名称
+       t1.jhb_dc_outboundtime, -- 南非仓出库
+       t2.part_dc_inboundtime, -- 分仓入库
+       TIMESTAMPDIFF(second,t1.jhb_dc_outboundtime,t2.part_dc_inboundtime) / 3600 as in_out_spend_time, -- 南非出库-分仓入库
+       t1.customer_name,  -- 客户名称
+       t3.province, -- 省份
+       t1.company, -- 快递公司
+       t1.sendstatus -- delivery订单状态
+-- 南非出库
+FROM  
+(
+  SELECT b.expressnumber,
+		 from_unixtime(a.transittime / 1000 - 6 * 3600) as jhb_dc_outboundtime,
+		 CASE WHEN b1.clientid IN ('1882015119836553', '1798940118245893', '2147838856892388', '2147841787248303') THEN 'SHEIN'
+		      WHEN b1.clientid IN ('2689675408624712') THEN 'TEMU'
+		 ELSE 'ELSE' END as customer_name, 
+		 b.receivecity as city, 
+		 b.receivepostcode as postcode, 
+		 b.receivesuburb as suburb,
+		 CASE WHEN b.expresscompanyid =3 THEN 'buffalo'
+              WHEN b.expresscompanyid =2 THEN 'fastway'
+              WHEN b.expresscompanyid =2266452665457878 THEN 'itt'
+              WHEN b.expresscompanyid = 7 THEN 'paxi'
+              WHEN b.expresscompanyid =8 THEN 'skynet'
+              WHEN b.expresscompanyid =2590541559123122 THEN 'dpdlaser'
+		 ELSE '' END as company,
+		 b.sendstatus
+  FROM buffaloex_delivery.expresstimerecord a 
+  LEFT JOIN buffaloex_delivery.express b
+  ON a.expressid = b.id
+  LEFT JOIN buffaloex2.express b1
+  ON b.expressnumber = b1.expressnumber
+  WHERE a.hubid = 823519816802652 
+    AND b.clientid not in ('2272458790721303','2815762535679143')
+    AND date(from_unixtime(a.transittime / 1000 - 6 * 3600)) >= DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d') -- 90天前日期
+)t1
+-- 分仓入库
+LEFT JOIN
+(
+  SELECT c.name,
+         b.expressnumber,
+		 from_unixtime(a.inboundtime / 1000 - 6 * 3600) as part_dc_inboundtime
+  FROM buffaloex_delivery.expresstimerecord a 
+  LEFT JOIN buffaloex_delivery.express b
+  ON a.expressid = b.id
+  LEFT JOIN buffaloex_delivery.storehouse c 
+  ON a.hubid = c.id
+  WHERE a.hubid != 823519816802652 
+    AND b.clientid not in ('2272458790721303','2815762535679143')
+    AND date(from_unixtime(a.inboundtime / 1000 - 6 * 3600)) >= DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d') -- 90天前日期
+)t2	
+ON t1.expressnumber = t2.expressnumber
+LEFT JOIN `ads_address_info_d` t3
+ON lower(t1.`city`) = lower(t3.`city`) AND lower(t1.`suburb`) =lower(t3.`suburb`) AND t1.`postcode` = t3.`postcode`
+WHERE t2.name IS NOT NULL;
