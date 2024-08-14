@@ -1,0 +1,156 @@
+-- 正向件
+SELECT e.expressnumber, -- 运单号
+       e.thirdnumber,-- 客户单号
+                         CASE when e.status = 5 THEN 'Order Exception'
+            when e.status = 8 THEN 'Waiting for payment'
+            when e.status = 10 THEN 'Order Confirmed'
+            when e.status = 20 THEN 'CN Inbound'
+            when e.status = 21 THEN 'CN Outbound'
+            when e.status = 23 THEN 'Warehouse transfer'
+            when e.status = 30 THEN 'CN Declared-Awaiting departure confirmation'
+            when e.status = 40 THEN 'International Shipping'
+            when e.status = 50 THEN 'Arrival at South Africa customs'
+            when e.status = 67 THEN 'Scanned in at SA warehouse'
+            when e.status = 68 THEN 'Picking...-拣货中'
+            when e.status = 69 THEN 'Packaging complete'
+            when e.status = 70 THEN 'Dispatching...-目的国落地配送中'
+            when e.status = 73 THEN 'In the transit'
+            when e.status = 80 THEN 'Client Received'
+            when e.status = 90 THEN 'Cancel-取消'
+            when e.status = 100 THEN 'Shout out-关单'
+                         END as status,-- 运单状态
+                         s.name as hub_name, -- 当前仓库
+                         ec.name as expresscompany, -- 第三方快递公司
+                         IF(e.ordertype = 110,'清派','全程') as ordertype, -- 运单类型（全程+清派）
+                         IF(e.taxpaystatus = 0,'未付','已付') as taxpaystatus, -- 付税状态
+                         e.customsclearancestatusdisplay as clearancestatus, -- 清关状态
+                         e3.content, -- 最新轨迹内容（排除虚假轨迹）
+                         e3.displaytime, -- 最新轨迹时间
+                         from_unixtime(e.createtime/1000-6*3600, '%Y-%m-%d %H:%i:%s') as createtime_za, -- 下单时间
+                         from_unixtime(IF(IF(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal)/1000>0,IF(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal)/1000,0/1000-6*3600),'%Y-%m-%d %H:%i:%s') as air_arrivaltime_za, -- 运抵目的国时间
+                         from_unixtime(IF(e2.airportoutboundtime>0,e2.airportoutboundtime,0)/1000-6*3600, '%Y-%m-%d %H:%i:%s') as airportoutboundtime_za, -- 机场出库时间
+                         from_unixtime(IF(etr.inboundtime>0,etr.inboundtime,IF(etr.cantransittime>0,etr.cantransittime,0))/1000-6*3600,'%Y-%m-%d %H:%i:%s') as inboundtime_za, -- 南非入库时间
+                         e.discardssign, -- 是否弃件
+                         e.lostflg -- 是否丢失
+FROM buffaloex2.express e
+LEFT JOIN buffaloex2.blnumber b
+ON e.blnumber = b.blnumber
+LEFT JOIN buffaloex2.expresscompany ec
+ON e.expresscompanyid = ec.id 
+LEFT JOIN buffaloex2.expressaging e2 
+ON e2.expressid = e.id 
+LEFT JOIN 
+(
+  SELECT *,row_number()over(partition by expressid order by createtime desc) as rn 
+  FROM buffaloex2.expressrecord
+  WHERE content not in (
+  'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible', 
+        'The order logistics track has not been updated for a long time, and the logistics service provider is troubleshooting the problem', 
+        'Tracking via email -- Delivery time exceeds 9 days', 
+        'Tracking via email -- No track update in 4 days',
+        'Tracking via email -- Delivery time exceeds 9 days;',
+        'Tracking via email -- No track update in 4 days;',
+        'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible',
+        'The parcel has been marked as possible lost',
+        'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible',
+        'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible',
+        'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible',
+  'Your parcel is in transit and it will deliver shortly',
+  'Tracking via email -- Delivery time exceeds 7 days;')
+) e3
+on e.id = e3.expressid and e3.rn = 1
+LEFT JOIN buffaloex_delivery.express e1
+ON e.expressnumber = e1.expressnumber
+LEFT JOIN 
+(
+  SELECT *
+  FROM buffaloex_delivery.expresstimerecord
+  WHERE hubid = 823519816802652  
+)etr
+ON etr.expressid = e1.id
+LEFT JOIN buffaloex_delivery.storehouse s
+ON e1.hubid = s.id
+WHERE e.clientid = 2689675408624712 -- TEMU
+  AND e.`status` < 80 -- 未闭环
+  
+  
+  
+  
+  
+  -- 逆向件
+SELECT e1.expressnumber, -- 运单号
+       e1.thirdnumber,-- 客户单号
+                         case e1.sendstatus 
+                         when -3 then "Tax Unpaid and not committed Inbound"
+                         when -2 then "Tax Unpaid and not committed Confirmed"
+                         when 1 then "Unpaid Confirmed"
+                         when  2 THEN "Not Committed Confirmed"
+                         when  3 THEN "Not Committed Inbound"
+                         when  5 THEN "Order Confirmed-下单成功"
+                         when  13 THEN "Pick Complete-已取件"
+                         when  17 THEN "Pack Complete-打包完成"
+                         when  20 THEN "In the Transit-转运中"
+                         when  30 THEN "Inbound-已入库"
+                         when  45 THEN "Wait Delivery-待派送"
+                         when  50 THEN "Dispatching-派送中"
+                         when  60 THEN "The Second Delivery-二次派送"
+                         when  64 THEN "Returning-退货中"
+                         when  65 THEN "Return Goods-退货"
+                         when  70 THEN "Client Received-签收"
+                         when  80 THEN "Shut Out-关单"
+                         when  90 THEN "Cancel-取消"
+                         end as delivery_status,-- 运单状态
+                         s.name as hub_name, -- 当前仓库
+                         ec.name as expresscompany, -- 第三方快递公司
+                         e1.ordertype,
+                         IF(e.ordertype = 110,'清派','全程') as ordertype, -- 运单类型（全程+清派）
+                         IF(e.taxpaystatus = 0,'未付','已付') as taxpaystatus, -- 付税状态
+                         e.customsclearancestatusdisplay as clearancestatus, -- 清关状态
+                         e3.content, -- 最新轨迹内容（排除虚假轨迹）
+                         e3.displaytime, -- 最新轨迹时间
+                         from_unixtime(e1.createtime/1000-6*3600, '%Y-%m-%d %H:%i:%s') as createtime_za, -- 下单时间
+                         from_unixtime(IF(IF(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal)/1000>0,IF(b.line = 1,b.firstarrivaltimereal,b.secondarrivaltimereal)/1000,0/1000-6*3600),'%Y-%m-%d %H:%i:%s') as air_arrivaltime_za, -- 运抵目的国时间
+                         from_unixtime(IF(e2.airportoutboundtime>0,e2.airportoutboundtime,0)/1000-6*3600, '%Y-%m-%d %H:%i:%s') as airportoutboundtime_za, -- 机场出库时间
+                         from_unixtime(IF(etr.inboundtime>0,etr.inboundtime,IF(etr.cantransittime>0,etr.cantransittime,0))/1000-6*3600,'%Y-%m-%d %H:%i:%s') as inboundtime_za, -- 南非入库时间
+                         e1.discardssign, -- 是否弃件
+                         e1.lostflg -- 是否丢失
+FROM buffaloex_delivery.express e1
+LEFT JOIN 
+(
+  SELECT *
+  FROM buffaloex_delivery.expresstimerecord
+  WHERE hubid = 823519816802652
+)etr
+ON etr.expressid = e1.id
+LEFT JOIN buffaloex_delivery.storehouse s
+ON e1.hubid = s.id
+LEFT JOIN buffaloex_delivery.expresscompany ec
+ON e1.expresscompanyid = ec.id 
+LEFT JOIN 
+(
+  SELECT *,row_number()over(partition by expressid order by createtime desc) as rn 
+  FROM buffaloex_delivery.expressrecord
+  WHERE content not in (
+  'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible', 
+        'The order logistics track has not been updated for a long time, and the logistics service provider is troubleshooting the problem', 
+        'Tracking via email -- Delivery time exceeds 9 days', 
+        'Tracking via email -- No track update in 4 days',
+        'Tracking via email -- Delivery time exceeds 9 days;',
+        'Tracking via email -- No track update in 4 days;',
+        'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible',
+        'The parcel has been marked as possible lost',
+        'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible',
+        'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible',
+        'The delivery time is too long. BUFFALO is tracking with the delivery，and will update as soon as possible',
+  'Your parcel is in transit and it will deliver shortly',
+  'Tracking via email -- Delivery time exceeds 7 days;')
+) e3
+on e1.id = e3.expressid and e3.rn = 1
+LEFT JOIN buffaloex2.express e
+ON e.expressnumber = e1.expressnumber
+LEFT JOIN buffaloex2.blnumber b
+ON e.blnumber = b.blnumber
+LEFT JOIN buffaloex2.expressaging e2 
+ON e2.expressid = e.id 
+WHERE e1.clientid = 2815762535679143 -- TEMU return
+  AND e1.sendstatus < 70 -- 未闭环
