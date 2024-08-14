@@ -1,0 +1,17 @@
+SELECT e.id AS '订单id',
+       e.expressnumber AS '订单编码',
+       e.sendcompany AS '客户方',
+       IF(e.taxpaystatus = 0,'否','是') AS '是否付税',
+       IF(e.ordertype = 110,'清派订单','全程订单') AS '订单类型',
+       DATE_FORMAT(FROM_UNIXTIME(e.createtime/1000),'%Y-%m-%d %H:%i:%s') AS '客户下单时间', -- 订单创建时间
+       DATE_FORMAT(FROM_UNIXTIME(IF(t.firstnoticetime = 0,NULL,t.firstnoticetime)/1000),'%Y-%m-%d %H:%i:%s') AS '订单发送收件人付税通知时间', -- 首次提醒时间
+       DATE_FORMAT(FROM_UNIXTIME(IF(t.paytime = 0,NULL,t.paytime)/1000),'%Y-%m-%d %H:%i:%s') AS '收件人完成付税时间', -- 付税时间
+       DATE_FORMAT(FROM_UNIXTIME(e.destinationtime/1000),'%Y-%m-%d %H:%i:%s') AS '航班运抵南非时间' -- 到达目的国时间
+FROM buffaloex2.express e 
+LEFT JOIN buffaloex2.expressaging ea
+ON e.id = ea.expressid
+LEFT JOIN buffaloex2.taxrecorddetail t
+ON e.id = t.expressid
+WHERE e.clientid in (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303) -- shein
+AND ((e.ordertype = 110 AND DATE_FORMAT(FROM_UNIXTIME(e.destinationtime/1000),'%Y-%m-%d %H:%i:%s') BETWEEN '2024-02-01 00:00:00' AND '2024-04-30 23:59:59') -- 清派订单为运抵南非时间2-4月 
+  OR (e.ordertype != 110 AND DATE_FORMAT(FROM_UNIXTIME(ea.cninboundtime/1000),'%Y-%m-%d %H:%i:%s') BETWEEN '2024-02-01 00:00:00' AND '2024-04-30 23:59:59')) -- 全程订单为中国入库时间2-4月
