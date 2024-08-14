@@ -1,0 +1,693 @@
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+TRUNCATE TABLE `ads`.`ads_all_fulfillment_efficiency_excel` 
+INSERT INTO `ads`.`ads_all_fulfillment_efficiency_excel`
+
+with dayhour as
+(
+    SELECT DATE_ADD('2024-01-01', INTERVAL (n-1) DAY) AS date_sequence
+    FROM 
+		(
+      SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+      FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+    ) numbers
+    WHERE DATE_ADD('2024-01-01', INTERVAL (n-1) DAY) <= curdate()
+),
+t1 as
+(
+  SELECT min(date_sequence) as monday,month(date_sequence) as month
+  FROM dayhour
+  WHERE if(DAYOFWEEK(date_sequence) = 1,(DAYOFWEEK(date_sequence)+6),(DAYOFWEEK(date_sequence)-1))= 1
+  GROUP BY month(date_sequence)
+),
+week as 
+(
+  SELECT dayhour.date_sequence,
+         if(a.month is not null,a.month,b.month) as month,
+         WEEK(DATE_SUB(date_sequence, INTERVAL if(DAYOFWEEK(date_sequence) = 1,(DAYOFWEEK(date_sequence)+6),(DAYOFWEEK(date_sequence)-1))-1 DAY), 1) - WEEK(if(b.monday is null,a.monday,b.monday)) as week,
+         concat(if(a.month is not null,a.month,b.month),'.','w',WEEK(DATE_SUB(date_sequence, INTERVAL if(DAYOFWEEK(date_sequence) = 1,(DAYOFWEEK(date_sequence)+6),(DAYOFWEEK(date_sequence)-1))-1 DAY), 1) - WEEK(if(b.monday is null,a.monday,b.monday))) as month_week
+  FROM dayhour
+  LEFT JOIN t1 a
+  ON date_sequence>= a.monday and month(dayhour.date_sequence) = a.month
+  LEFT JOIN t1 b
+  ON a.monday is null and cast(month(dayhour.date_sequence) as int)-1 = cast(b.month as int)
+)
+
+SELECT 1 as sort_id,
+       'End to End' as `阶段`,
+       'Airport Arriving > Delivered' as `英文时间节点`,
+       '机场到达->派送完成' as `时间节点`,
+       '240' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`air_arrivaltime`) as `开始日期 start_date`,
+       DATE(`air_arrivaltime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`status` <= 100,1,0)) = 0,0,SUM(IF(`signedtime` > 0 AND `air_arrivaltime_sign` <= 240 AND `status` < 100,1,0)) / SUM(IF(`status` <= 100,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`signedtime` > 0 AND `air_arrivaltime_sign` <= 240 AND `status` < 100,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`status` <= 100,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_airport` a
+LEFT JOIN week b
+ON DATE(a.`air_arrivaltime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`air_arrivaltime`)
+
+UNION ALL
+                        
+SELECT 2 as sort_id,
+       'End to End' as `阶段`,
+       'Airport Arriving > Airport Entersite' as `英文时间节点`,
+       '机场到达->机场入库' as `时间节点`,
+       '48' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`air_arrivaltime`) as `开始日期 start_date`,
+       DATE(`air_arrivaltime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`status` <= 100,1,0)) = 0,0,SUM(IF(`air_arrivaltime_inbound` > 0 AND `air_arrivaltime_inbound` <= 48 AND `status` < 100,1,0)) / SUM(IF(`status` <= 100,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`air_arrivaltime_inbound` > 0 AND `air_arrivaltime_inbound` <= 48 AND `status` < 100,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`status` <= 100,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_airport` a 
+LEFT JOIN week b
+ON DATE(a.`air_arrivaltime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`air_arrivaltime`) 
+
+UNION ALL
+                        
+SELECT 3 as sort_id,
+       'End to End' as `阶段`,
+       'Airport Entersite > Delivered' as `英文时间节点`,
+       '机场入库->派送成功' as `时间节点`,
+       '192' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`air_inbound`) as `开始日期 start_date`,
+       DATE(`air_inbound`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`status` <= 100,1,0)) = 0,0,SUM(IF(`air_inbound_sign` > 0 AND `air_inbound_sign` <= 192 AND `status` < 100,1,0)) / SUM(IF(`status` <= 100,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`air_inbound_sign` > 0 AND `air_inbound_sign` <= 192 AND `status` < 100,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`status` <= 100,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_airport` a 
+LEFT JOIN week b
+ON DATE(a.`air_inbound`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`air_inbound`)    
+
+UNION ALL
+                        
+SELECT 4 as sort_id,
+       'Airport DC' as `阶段`,
+       'Airport Arriving > Airport Collection' as `英文时间节点`,
+       '机场到达->机场取件' as `时间节点`,
+       '15' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`air_arrivaltime`) as `开始日期 start_date`,
+       DATE(`air_arrivaltime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`status` <= 100,1,0)) = 0,0,SUM(IF(`air_span_hours` > 0 AND `air_span_hours` <= 15 AND `status` < 100,1,0)) / SUM(IF(`status` <= 100,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`air_span_hours` > 0 AND `air_span_hours` <= 15 AND `status` < 100,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`status` <= 100,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_airport` a
+LEFT JOIN week b
+ON DATE(a.`air_arrivaltime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`air_arrivaltime`)     
+
+UNION ALL
+                        
+SELECT 5 as sort_id,
+       'Airport DC' as `阶段`,
+       'Shipment Entersitable > Airport Entersite' as `英文时间节点`,
+       '提单可操作->机场入库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`air_entersiteabletime`) as `开始日期 start_date`,
+       DATE(`air_entersiteabletime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`status` <= 100,1,0)) = 0,0,SUM(IF(`air_entersiteabletime_inbound` >= 0 AND `air_entersiteabletime_inbound` <= 24 AND `status` < 100,1,0)) / SUM(IF(`status` <= 100,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`air_entersiteabletime_inbound` >= 0 AND `air_entersiteabletime_inbound` <= 24 AND `status` < 100,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`status` <= 100,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_airport` a
+LEFT JOIN week b
+ON DATE(a.`air_entersiteabletime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`air_entersiteabletime`)      
+
+UNION ALL
+                        
+SELECT 6 as sort_id,
+       'Airport DC' as `阶段`,
+       'Airport Collection > Airport Entersite' as `英文时间节点`,
+       '机场取件->机场入库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`operabletime`) as `开始日期 start_date`,
+       DATE(`operabletime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`status` <= 100,1,0)) = 0,0,SUM(IF(`air_receivetime_inbound_new` >= 0 AND `air_receivetime_inbound_new` <= 24 AND `status` < 100,1,0)) / SUM(IF(`status` <= 100,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`air_receivetime_inbound_new` >= 0 AND `air_receivetime_inbound_new` <= 24 AND `status` < 100,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`status` <= 100,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_airport` a
+LEFT JOIN week b
+ON DATE(a.`operabletime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`operabletime`)      
+
+UNION ALL
+                        
+SELECT 7 as sort_id,
+       'Airport DC' as `阶段`,
+       'Airport Entersite > Airport Outbound' as `英文时间节点`,
+       '机场入库->机场出库' as `时间节点`,
+       '12' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`intaxclearanceytime`) as `开始日期 start_date`,
+       DATE(`intaxclearanceytime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`status` <= 100,1,0)) = 0,0,SUM(IF(`air_inbound_outbound_new` >= 0 AND `air_inbound_outbound_new` <= 12 AND `status` < 100,1,0)) / SUM(IF(`status` <= 100,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`air_inbound_outbound_new` >= 0 AND `air_inbound_outbound_new` <= 12 AND `status` < 100,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`status` <= 100,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_airport` a
+LEFT JOIN week b
+ON DATE(a.`intaxclearanceytime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`intaxclearanceytime`)            
+
+UNION ALL
+                        
+SELECT 8 as sort_id,
+       'Linehaul' as `阶段`,
+       'Airport Outbound > JHB inbound' as `英文时间节点`,
+       '机场出库->JHB入库' as `时间节点`,
+       '1.5' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`air_outbound`) as `开始日期 start_date`,
+       DATE(`air_outbound`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`status` <= 100,1,0)) = 0,0,SUM(IF(`air_out_jhb_in` > 0 AND `air_out_jhb_in` <= 1.5 AND `status` < 100,1,0)) / SUM(IF(`status` <= 100,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`air_out_jhb_in` > 0 AND `air_out_jhb_in` <= 1.5 AND `status` < 100,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`status` <= 100,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_airport` a
+LEFT JOIN week b
+ON DATE(a.`air_outbound`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`air_outbound`)         
+
+UNION ALL
+                      
+SELECT 9 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > BLM inbound' as `英文时间节点`,
+       'JHB出库->Bloemfontein-DC入库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`)as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'Bloemfontein-DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)      
+
+UNION ALL
+                         
+SELECT 10 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > CPT inbound' as `英文时间节点`,
+       'JHB出库->Cape Town-DC入库' as `时间节点`,
+       '48' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 48 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 48 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'Cape Town-DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)        
+
+UNION ALL
+                        
+SELECT 11 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > DBN inbound' as `英文时间节点`,
+       'JHB出库->Durban-DC入库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'Durban-DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)      
+
+UNION ALL
+                        
+SELECT 12 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > EST inbound' as `英文时间节点`,
+       'JHB出库->East London-DC入库' as `时间节点`,
+       '48' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 48 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 48 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'East London-DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)     
+
+UNION ALL
+                      
+SELECT 13 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > NLP inbound' as `英文时间节点`,
+       'JHB出库->Nelspruit-DC入库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'Nelspruit-DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)       
+
+UNION ALL
+                        
+SELECT 14 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > PLK inbound' as `英文时间节点`,
+       'JHB出库->Polokwane-DC入库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'Polokwane-DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)        
+
+UNION ALL
+                         
+SELECT 15 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > PLZ inbound' as `英文时间节点`,
+       'JHB出库->Port Elizabeth-DC入库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'Port Elizabeth-DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)       
+
+UNION ALL
+                      
+SELECT 16 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > POTCH inbound' as `英文时间节点`,
+       'JHB出库->Potchefstroom-DC入库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'Potchefstroom- DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)       
+
+UNION ALL
+                   
+SELECT 17 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > PTA inbound' as `英文时间节点`,
+       'JHB出库->Pretoria-DC入库' as `时间节点`,
+       '2' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 2 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 2 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'Pretoria-DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`) 
+
+UNION ALL
+                   
+SELECT 18 as sort_id,
+       'Linehaul' as `阶段`,
+       'JHB Outbound > MID inbound' as `英文时间节点`,
+       'JHB出库->Middelburg-DC入库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_out_spend_time` > 0 AND `in_out_spend_time` <= 24 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_linehaul` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+  AND name = 'Middelburg-DC'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`) 
+
+UNION ALL
+                      
+SELECT 19 as sort_id,
+       'JHB DC' as `阶段`,
+       'JHB Inbound > JHB Driver Outbound' as `英文时间节点`,
+       'JHB入库->JHB Driver出库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_inboundtime`)  as `开始日期 start_date`,
+       DATE(`jhb_dc_inboundtime`)  as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80 AND `company` = 'buffalo',1,0)) = 0,0,SUM(IF(`in_Driver_span_hours` > 0 AND `in_Driver_span_hours` <= 24 AND `sendstatus` < 80 AND `company` = 'buffalo',1,0)) / SUM(IF(`sendstatus` <= 80 AND `company` = 'buffalo',1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_Driver_span_hours` > 0 AND `in_Driver_span_hours` <= 24 AND `sendstatus` < 80 AND `company` = 'buffalo',1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80 AND `company` = 'buffalo',1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_jhb` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_inboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_inboundtime`)      
+
+UNION ALL
+                         
+SELECT 20 as sort_id,
+       'JHB DC' as `阶段`,
+       'JHB Inbound > JHB 3PL Outbound' as `英文时间节点`,
+       'JHB入库->JHB 3PL出库' as `时间节点`,
+       '24' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_inboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_inboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) = 0,0,SUM(IF(`in_3PL_span_hours` > 0 AND `in_3PL_span_hours` <= 24 AND `sendstatus` < 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) / SUM(IF(`sendstatus` <= 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`in_3PL_span_hours` > 0 AND `in_3PL_span_hours` <= 24 AND `sendstatus` < 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_jhb` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_inboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_inboundtime`)     
+  
+UNION ALL
+                      
+SELECT 21 as sort_id,
+       'JHB DC' as `阶段`,
+       'JHB Outbound > Driver Pick up' as `英文时间节点`,
+       'JHB出库->快递员取件' as `时间节点`,
+       '10' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_Driver_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_Driver_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`status` <= 80 AND `company` = 'buffalo',1,0)) = 0,0,SUM(IF(`courier_pickup` > 0 AND `courier_pickup` <= 10 AND `status` < 80 AND `company` = 'buffalo',1,0)) / SUM(IF(`status` <= 80 AND `company` = 'buffalo',1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`courier_pickup` > 0 AND `courier_pickup` <= 10 AND `status` < 80 AND `company` = 'buffalo',1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`status` <= 80 AND `company` = 'buffalo',1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_courier` a
+LEFT JOIN week b
+ON DATE(a.`jhb_Driver_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`jhb_Driver_outboundtime`)     
+  
+UNION ALL
+                         
+SELECT 22 as sort_id,
+       'JHB DC' as `阶段`,
+       'JHB Outbound > 3PL Pick up' as `英文时间节点`,
+       'JHB出库->3PL取件' as `时间节点`,
+       '10' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) = 0,0,SUM(IF(`courier_pl_pickup` > 0 AND `courier_pl_pickup` <= 10 AND `sendstatus` < 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) / SUM(IF(`sendstatus` <= 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`courier_pl_pickup` > 0 AND `courier_pl_pickup` <= 10 AND `sendstatus` < 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_jhb` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)          
+
+UNION ALL
+                         
+SELECT 23 as sort_id,
+       'Last mile delivery' as `阶段`,
+       'JHB Outbound > Delivered' as `英文时间节点`,
+       'JHB出库->派送成功' as `时间节点`,
+       '120' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`jhb_dc_outboundtime`) as `开始日期 start_date`,
+       DATE(`jhb_dc_outboundtime`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80,1,0)) = 0,0,SUM(IF(`fi_ou_span_hours` > 0 AND `fi_ou_span_hours` <= 120 AND `sendstatus` < 80,1,0)) / SUM(IF(`sendstatus` <= 80,1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`fi_ou_span_hours` > 0 AND `fi_ou_span_hours` <= 120 AND `sendstatus` < 80,1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80,1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_jhb` a
+LEFT JOIN week b
+ON DATE(a.`jhb_dc_outboundtime`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`jhb_dc_outboundtime`)         
+
+UNION ALL
+                         
+SELECT 24 as sort_id,
+       'Last mile delivery' as `阶段`,
+       'Driver Pick up > Delivered' as `英文时间节点`,
+       '快递员取件->派送成功' as `时间节点`,
+       '120' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`all_courier_pickup_time`) as `开始日期 start_date`,
+       DATE(`all_courier_pickup_time`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80 AND `company` = 'buffalo',1,0)) = 0,0,SUM(IF(`courier_dispatch` > 0 AND `courier_dispatch` <= 120 AND `sendstatus` < 80 AND `company` = 'buffalo',1,0)) / SUM(IF(`sendstatus` <= 80 AND `company` = 'buffalo',1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`courier_dispatch` > 0 AND `courier_dispatch` <= 120 AND `sendstatus` < 80 AND `company` = 'buffalo',1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80 AND `company` = 'buffalo',1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_jhb` a
+LEFT JOIN week b
+ON DATE(a.`all_courier_pickup_time`) = b.date_sequence
+WHERE customer_name = 'SHEIN'
+GROUP BY customer_name,company,province,DATE(`all_courier_pickup_time`)       
+
+UNION ALL
+                         
+SELECT 25 as sort_id,
+       'Last mile delivery' as `阶段`,
+       '3PL Pick up > Delivered' as `英文时间节点`,
+       '3PL取件->派送成功' as `时间节点`,
+       '168' as `参数阀值/小时`,
+	   '是' as `是否全量数据`,
+	   '否' as `是否剔除等待付税时间-Temu`,
+	   '否' as `是否分批`,
+	   customer_name as `客户名称 Company`,
+	   province as `省份 Province`,
+	   company as `3PL Courier`,
+	   DATE(`all_courier_pl_pickup_time`) as `开始日期 start_date`,
+       DATE(`all_courier_pl_pickup_time`) as `结束日期 end_date`,
+       b.month_week as `月周 month_week`,
+       IF(SUM(IF(`sendstatus` <= 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) = 0,0,SUM(IF(`courier_pl_dispatch` > 0 AND `courier_pl_dispatch` <= 168 AND `sendstatus` < 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) / SUM(IF(`sendstatus` <= 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0))) as `达标率 achievement_rate`,
+       SUM(IF(`courier_pl_dispatch` > 0 AND `courier_pl_dispatch` <= 168 AND `sendstatus` < 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) as `完成总数 achieve_order`,
+       SUM(IF(`sendstatus` <= 80 AND `company` in ("fastway","itt","paxi","skynet","dpdlaser"),1,0)) as `总数 total_order`,
+       now() as create_time
+FROM `ads_express_fulfillment_efficiency_jhb` a
+LEFT JOIN week b
+ON DATE(a.`all_courier_pl_pickup_time`) = b.date_sequence
+WHERE customer_name IN ('SHEIN')
+GROUP BY customer_name,company,province,DATE(`all_courier_pl_pickup_time`);
