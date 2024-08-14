@@ -1,0 +1,26 @@
+INSERT INTO ads_capacity_branch_info 
+/* 请使用当前节点所选择的数据库语法编写SQL */ 
+select a.date,a.name,a.nm1,b.nm2
+from 
+  (select c.name,count(distinct expressnumber)as nm1,date(from_unixtime(if(a.inboundtime>0,a.inboundtime,a.cantransittime)/1000-6*3600))as date
+  from buffaloex_delivery.expresstimerecord a 
+  left join buffaloex_delivery.express b
+  on a.expressid=b.id
+  left join buffaloex_delivery.storehouse c 
+  on a.hubid=c.id
+  where b.clientid not in ('2272458790721303','2815762535679143')
+    and date(from_unixtime(if(a.inboundtime>0,a.inboundtime,a.cantransittime)/1000-6*3600))=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+  group by 1)a
+  left join 
+  (
+      select c.name,count(distinct b.expressnumber) as nm2
+    from buffaloex_delivery.expresstimerecord a 
+    left join buffaloex_delivery.express b
+    on a.expressid=b.id
+    left join buffaloex_delivery.storehouse c 
+    on a.hubid=c.id
+    where b.clientid not in ('2272458790721303','2815762535679143')
+    and date(from_unixtime(if(a.outboundtime>0,a.outboundtime,a.transittime)/1000-6*3600))=IF(HOUR(NOW()) > 6,CURRENT_DATE(),DATE_SUB(CURRENT_DATE(), 1))
+    GROUP BY 1
+  )b
+on a.name=b.name
