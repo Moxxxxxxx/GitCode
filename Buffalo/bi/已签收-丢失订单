@@ -1,0 +1,12 @@
+  SELECT e1.expressnumber AS '订单编码',
+               CASE WHEN e2.lostflg = 2 THEN 'Lost IN Warehouse'
+                                      WHEN e2.lostflg = 3 THEN 'Lost In Transit' END AS '丢失原因',
+                                 FROM_UNIXTIME(e1.createtime/1000,'%Y-%m-%d %H:%i:%s') AS '订单创建时间',
+                                 e2.id
+  FROM buffaloex2.express e1
+  LEFT JOIN buffaloex_delivery.express e2
+  ON e1.expressnumber = e2.expressnumber
+  WHERE FROM_UNIXTIME(e1.createtime/1000,'%Y-%m-%d %H:%i:%s') >= '2024-05-01 00:00:00' -- 5月份 
+    AND e1.clientid IN (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303) -- shein
+                and e2.lostflg > 0 -- 丢失状态
+                AND e2.sendstatus = 70 -- 派送已签收
