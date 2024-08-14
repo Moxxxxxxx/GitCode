@@ -1,0 +1,18 @@
+select 
+week(DATE_SUB(date(cninboud),INTERVAL 1 day))+1 as week_day
+, MIN(date(cninboud)) as stat_date
+, MAX(date(cninboud)) as end_date
+, sum(if (ordertype = 110,1,0)) as `自主头程包裹数量`
+, sum(if (ordertype != 110,1,0)) as `全程包裹数量`
+, sum(if(ordertype = 110 and status = 80,1,0)) as `自主头程妥投率`
+,sum(if(ordertype != 110 and status = 80,1,0)) as `全程妥投率`
+from(
+select FROM_UNIXTIME(e.africareceivetime/1000,'%Y-%m-%d %H:%i:%s') as cninboud
+,e.ordertype as ordertype
+,e.status as status
+from buffaloex2.express e
+where e.clientid in (1882015119836553, 1798940118245893, 2147838856892388, 2147841787248303)
+and FROM_UNIXTIME(e.africareceivetime/1000,'%Y-%m-%d %H:%i:%s') >= '2024-03-04 00:00:00'
+)t
+group by week(DATE_SUB(date(cninboud),INTERVAL 1 day))+1
+order by week(DATE_SUB(date(cninboud),INTERVAL 1 day))+1
