@@ -1,0 +1,54 @@
+SELECT r.customer, -- 客户
+       r.ordertype, -- 产品类型
+       '清关费' as incometype, -- 收入类型
+       date_format(r.clearancepaymenttime,'%Y-%m') as stat_month, -- 固定月份
+       count(r.expressnumber) as ordernum, -- 对账单单量
+       sum(ifnull(r.weight,0)) as orderweight, -- 对账单预估重量
+       sum(ifnull(r.finalweight,0)) as orderfinalweight, -- 对账单实际重量
+       sum(ifnull(r.ascertainedcost,0)) as orderfreight, -- 对账单应收运费
+       null as first_ordernum, -- 首款单单量
+       null as first_orderweight, -- 首款单预估重量
+       null as first_orderfinalweight, -- 首款单实际重量
+       null as first_orderfreight -- 首款单应收运费
+FROM `ads`.`ads_reconciliation_details` r
+WHERE r.customer = 'temu'
+  AND r.ordertype = '小包清+派'
+GROUP BY r.customer,r.ordertype,date_format(r.clearancepaymenttime,'%Y-%m')
+
+UNION ALL
+
+SELECT r.customer, -- 客户
+       r.ordertype, -- 产品类型
+       '尾派费' as incometype, -- 收入类型
+       date_format(r.fullshippingfeebillingtime,'%Y-%m') as stat_month, -- 固定月份
+       count(r.expressnumber) as ordernum, -- 对账单单量
+       sum(ifnull(r.weight,0)) as orderweight, -- 对账单预估重量
+       sum(ifnull(r.finalweight,0)) as orderfinalweight, -- 对账单实际重量
+       sum(ifnull(r.operatingcost,0)) as orderfreight, -- 对账单应收运费
+       count(r.expressnumber) as first_ordernum, -- 首款单单量
+       sum(ifnull(r.weight,0)) as first_orderweight, -- 首款单预估重量
+       sum(ifnull(r.finalweight,0)) as first_orderfinalweight, -- 首款单实际重量
+       sum(ifnull(r.operatingcost,0)) as first_orderfreight -- 首款单应收运费
+FROM `ads`.`ads_reconciliation_details` r
+WHERE r.customer = 'temu'
+  AND r.ordertype = '小包清+派'
+GROUP BY r.customer,r.ordertype,date_format(r.fullshippingfeebillingtime,'%Y-%m')
+
+UNION ALL
+
+SELECT r.customer, -- 客户
+       r.ordertype, -- 产品类型
+       '全程运费' as incometype, -- 收入类型
+       date_format(r.fullshippingfeebillingtime,'%Y-%m') as stat_month, -- 固定月份
+       count(r.expressnumber) as ordernum, -- 对账单单量
+       sum(ifnull(r.weight,0)) as orderweight, -- 对账单预估重量
+       sum(ifnull(r.finalweight,0)) as orderfinalweight, -- 对账单实际重量
+       sum(ifnull(r.cost,0)) as orderfreight, -- 对账单应收运费
+       count(r.expressnumber) as first_ordernum, -- 首款单单量
+       sum(ifnull(r.weight,0)) as first_orderweight, -- 首款单预估重量
+       sum(ifnull(r.finalweight,0)) as first_orderfinalweight, -- 首款单实际重量
+       sum(ifnull(r.cost,0)) as first_orderfreight -- 首款单应收运费
+FROM `ads`.`ads_reconciliation_details` r
+WHERE r.customer = 'temu'
+  AND r.ordertype = '小包发货DDU'
+GROUP BY r.customer,r.ordertype,date_format(r.fullshippingfeebillingtime,'%Y-%m')
