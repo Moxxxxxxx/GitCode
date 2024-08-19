@@ -1,0 +1,362 @@
+/*
+-- 付税
+-- Bank bill/pop未审核数
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       count(t.id) as pop_unprocessed_num -- pop未审核数
+FROM `buffaloex2`.`taxpackageinfo` t
+WHERE t.uploadprooftime > 0 AND t.dealproofresult = 0 AND t.dealprooftime = 0 AND t.finishtime = 0;
+
+
+-- 出入库 
+-- 预计入库数\实际入库数\预计出库数\实际出库数
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       SUM(d.estinboundqty) as est_inbound_num, -- 预计入库数
+       SUM(d.actinboundqty) as act_inbound_num, -- 实际入库数
+       SUM(d.buffalodriverwaitdispatchqty) as buffalo_est_outbound_num, -- buffalo预计出库数
+       SUM(d.buffalodrivertodaydispatchqty) as buffalo_act_outbound_num, -- buffalo实际出库数
+       SUM(d.courierestleavesitefastwayqty) + SUM(d.courierestleavesiteskynetqty) + SUM(d.courierestleavesiteittqty) + SUM(d.courierestleavesitepaxiqty) + SUM(d.courierestleavesitedpdlaserqty) as 3pl_est_outbound_num, -- 3pl预计出库数
+       SUM(d.couriertodayleavesitefastwayqty) + SUM(d.couriertodayleavesiteskynetqty) + SUM(d.couriertodayleavesiteittqty) + SUM(d.couriertodayleavesitepaxiqty) + SUM(d.couriertodayleavesitedpdlaserqty) as 3pl_act_outbound_num, -- 3pl实际出库数
+       CAST(AVG(d.transitpackagewaittotransitbagqty) AS INT) as linehaul_est_outbound_num, -- linehaul预计出库数
+       CAST(AVG(d.transitpackagetodaytransitbagqty) AS INT) as linehaul_act_outbound_num, -- linehaul实际出库数
+-- 尾程派送
+-- 出库派送数-buffalo派送数-same day签收
+       SUM(d.buffalodriversigned24hoursqty) as buffalo_sameday_signed_num, -- buffalo24小时same day签收
+-- 各仓库内操作
+-- 库内异常-client collect
+       SUM(d.clientcollecttotaluncollectqty) as exceptional_client_collect -- client collect异常
+FROM `dwd`.`hubdashboarddata` d
+WHERE FROM_UNIXTIME(d.createtime/1000-6*3600,'%Y-%m-%d') = date(date_sub(now(), INTERVAL 6 HOUR))
+GROUP BY FROM_UNIXTIME(d.createtime/1000-6*3600,'%Y-%m-%d');
+*/
+/*
+-- 机场
+-- 运抵机场/实际运抵提单
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+	   count(blnumber) as air_arrrive_blnumber_num -- 实际运抵提单
+FROM `buffaloex2`.`flightdetail`
+WHERE ((secondarrivaltime = 0 and firstarrivaltimereal > 0) or (secondarrivaltime > 0 and secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
+  AND date(from_unixtime(if(secondarrivaltimereal > 0,secondarrivaltimereal,firstarrivaltimereal)/1000)) = date(date_sub(now(), INTERVAL 6 HOUR));
+*/
+-- 运抵机场/实际运抵运单
+/*
+SELECT date,
+       sum(air_arrrive_order_num) as air_arrrive_order_num -- 实际运抵运单
+FROM
+(
+  -- 不分批
+  SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+         if(sum(b.totalnumber) is null,0,sum(b.totalnumber)) as air_arrrive_order_num -- 实际运抵运单
+  FROM buffaloex2.flightdetail f
+  JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
+  JOIN 
+  (
+    SELECT t1.blnumber,if(count(t1.blnumber) > 1,1,0) as is_batch
+    FROM buffaloex2.flightdetail t1
+    JOIN buffaloex2.blnumber t2 ON t1.blnumber =t2.blnumber
+    GROUP BY t1.blnumber
+  )t2 
+  ON f.blnumber = t2.blnumber
+  WHERE t2.is_batch = 0
+    AND ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
+    AND date(from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal)/1000)) = date(date_sub(now(), INTERVAL 6 HOUR))
+  
+  UNION ALL
+  -- 分批
+  SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+	     if(sum(cast((f.bags/b.totalboxnumber)*b.totalnumber as int)) is null,0,sum(cast((f.bags/b.totalboxnumber)*b.totalnumber as int))) as air_arrrive_order_num -- 实际运抵运单
+  FROM buffaloex2.flightdetail f
+  JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
+  JOIN 
+  (
+    SELECT t1.blnumber,if(count(t1.blnumber) > 1,1,0) as is_batch
+    FROM buffaloex2.flightdetail t1
+    JOIN buffaloex2.blnumber t2 ON t1.blnumber =t2.blnumber
+    GROUP BY t1.blnumber
+  )t2 
+  ON f.blnumber = t2.blnumber
+  WHERE t2.is_batch = 1
+    AND ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
+    AND date(from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal)/1000)) = date(date_sub(now(), INTERVAL 6 HOUR))
+)tmp
+GROUP BY date;
+*/
+/*
+-- 机场取件/机场取件提单
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+	   count(blnumber) as air_collect_blnumber_num -- 机场取件提单
+FROM buffaloex2.flightdetail 
+WHERE date(from_unixtime(collecttime/1000)) = date(date_sub(now(), INTERVAL 6 HOUR));
+*/
+/*
+-- 机场取件/机场取件运单
+SELECT date,
+       sum(air_collect_order_num) as air_collect_order_num
+FROM
+(
+  -- 不分批
+  SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+         if(sum(b.totalnumber) is null,0,sum(b.totalnumber)) as air_collect_order_num
+  FROM buffaloex2.flightdetail f
+  JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
+  JOIN 
+  (
+    SELECT t1.blnumber,if(count(t1.blnumber) > 1,1,0) as is_batch
+    FROM buffaloex2.flightdetail t1
+    JOIN buffaloex2.blnumber t2 ON t1.blnumber =t2.blnumber
+    GROUP BY t1.blnumber
+  )t2 
+  ON f.blnumber = t2.blnumber
+  WHERE t2.is_batch = 0
+    AND date(from_unixtime(f.collecttime/1000)) = date(date_sub(now(), INTERVAL 6 HOUR))
+
+  UNION ALL
+  -- 分批
+  SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+	     if(sum(cast((f.bags/b.totalboxnumber)*b.totalnumber as int)) is null,0,sum(cast((f.bags/b.totalboxnumber)*b.totalnumber as int))) as air_collect_order_num
+  FROM buffaloex2.flightdetail f
+  JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
+  JOIN 
+  (
+    SELECT t1.blnumber,if(count(t1.blnumber) > 1,1,0) as is_batch
+    FROM buffaloex2.flightdetail t1
+    JOIN buffaloex2.blnumber t2 ON t1.blnumber =t2.blnumber
+    GROUP BY t1.blnumber
+  )t2 
+  ON f.blnumber = t2.blnumber
+  WHERE t2.is_batch = 1
+    AND date(from_unixtime(f.collecttime/1000)) = date(date_sub(now(), INTERVAL 6 HOUR))
+)tmp
+GROUP BY date;
+*/
+/*
+-- 机场入库/可入库提单数 
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       count(distinct b.blnumber) as est_airinbound_blnumber_num
+FROM buffaloex2.blnumber b
+WHERE date(from_unixtime(b.operabletime/1000-6*3600))  = date(date_sub(now(), INTERVAL 6 HOUR))
+*/
+/*
+-- 机场入库/已入库提单数
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+	   count(distinct ex.blnumber) as act_airinbound_blnumber_num
+FROM buffaloex2.expressaging e 
+LEFT JOIN buffaloex2.express ex ON e.expressid = ex.id
+WHERE ex.clientid not in ('2272458790721303','2815762535679143')
+ AND date(from_unixtime(e.zainboundtime/1000-6*3600)) = date(date_sub(now(), INTERVAL 6 HOUR));
+*/
+/*
+-- 机场出库/可出库提单数
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       count(distinct e.blnumber) as est_airoutbound_blnumber_num
+FROM  
+(
+  SELECT e.expressnumber,
+         e.blnumber
+  FROM buffaloex2.express e,buffaloex2.expressaging a
+  WHERE e.id=a.expressid AND e.status <90 AND a.zainboundtime>0 AND a.taxpaidtime>0 AND a.clearancefinishtime>0 
+	AND a.zaoutboundtime=0 AND a.airportoutboundtime=0
+	AND e.discardssign = 0 AND e.ordertype not in (70,90) AND e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') AND e.status = 67 AND e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia  holding状态 异常件 只保留Scanned in at SA warehouse状态
+	AND FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime)/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
+) e
+LEFT JOIN 
+(
+  SELECT expressnumber
+  FROM ads.ads_exception_total_detail_dd
+  GROUP BY expressnumber
+)et
+ON e.expressnumber = et.expressnumber
+WHERE et.expressnumber is null;
+*/
+/*
+-- 机场出库/已出库提单数
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+	   count(distinct ex.blnumber) as act_airoutbound_blnumber_num
+FROM buffaloex2.expressaging ea 
+LEFT JOIN buffaloex2.express ex ON ea.expressid = ex.id
+WHERE ex.transportmode < 10 
+  AND ex.clientid not in ('2272458790721303','2815762535679143')
+  AND date(from_unixtime(ea.airportoutboundtime/1000-6*3600)) = date(date_sub(now(), INTERVAL 6 HOUR));
+*/
+/*
+-- 滞留/已付税已清关滞留24h/48h/72h
+-- 滞留机场/机场已滞留超过24h运单数
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       sum(if(spend_hour>24,1,0)) as waitfordelivery_over24_num,
+	   sum(if(spend_hour>48,1,0)) as waitfordelivery_over48_num,
+       sum(if(spend_hour>72,1,0)) as waitfordelivery_over72_num
+FROM  
+(
+  SELECT e.expressnumber,
+         (UNIX_TIMESTAMP(NOW())*1000 - GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime))/1000/3600 as spend_hour 
+  FROM buffaloex2.express e,buffaloex2.expressaging a
+  WHERE e.id=a.expressid AND e.status <90 AND a.zainboundtime>0 AND a.taxpaidtime>0 AND a.clearancefinishtime>0 
+	AND a.zaoutboundtime=0 AND a.airportoutboundtime=0
+	AND (UNIX_TIMESTAMP(NOW())*1000 - GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime))/1000/3600>24 -- 已入库已付税已清关未出库且超过24h
+	AND e.discardssign = 0 AND e.ordertype not in (70,90) AND e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') AND e.status = 67 AND e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia  holding状态 异常件 只保留Scanned in at SA warehouse状态
+	AND FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime)/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
+) e
+LEFT JOIN 
+(
+  SELECT expressnumber
+  FROM ads.ads_exception_total_detail_dd
+  GROUP BY expressnumber
+)et
+ON e.expressnumber = et.expressnumber
+WHERE et.expressnumber is null;
+*/
+
+-- 当天签收订单的 - 6.7.8天签收率
+/*
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       SUM(IF(IF(e.clientid IN (2689675408624712),((e2.signedtime - e.africareceivetime) / 1000 / 3600) - (if(e2.taxpaidtime <= e.africareceivetime,0,(e2.taxpaidtime - e.africareceivetime) / 1000 / 3600)),(e2.signedtime - e.africareceivetime) / 1000 / 3600) <= 144,1,0)) as 6days_signed_num, -- 6天签收
+       SUM(IF(IF(e.clientid IN (2689675408624712),((e2.signedtime - e.africareceivetime) / 1000 / 3600) - (if(e2.taxpaidtime <= e.africareceivetime,0,(e2.taxpaidtime - e.africareceivetime) / 1000 / 3600)),(e2.signedtime - e.africareceivetime) / 1000 / 3600) <= 168,1,0)) as 7days_signed_num, -- 7天签收
+       SUM(IF(IF(e.clientid IN (2689675408624712),((e2.signedtime - e.africareceivetime) / 1000 / 3600) - (if(e2.taxpaidtime <= e.africareceivetime,0,(e2.taxpaidtime - e.africareceivetime) / 1000 / 3600)),(e2.signedtime - e.africareceivetime) / 1000 / 3600) <= 192,1,0)) as 8days_signed_num -- 8天签收
+  FROM buffaloex2.express e 
+  JOIN buffaloex2.expressaging e2
+  ON e2.expressid = e.id 
+  WHERE e.status < 90 
+    AND from_unixtime(IF((e2.signedtime / 1000 - 6 * 3600) > 0,e2.signedtime / 1000 - 6 * 3600,0), '%Y-%m-%d') = date(date_sub(now(), INTERVAL 6 HOUR));
+*/
+-- 运抵南非/付税率+清关率
+-- 清关/已清关数
+-- Release/release数+停关order数
+/*
+SELECT date,
+       sum(air_arrrive_taxpaid_num) as air_arrrive_taxpaid_num, -- 已付税运单
+       sum(air_arrrive_clearanced_num) as air_arrrive_clearanced_num, -- 已清关运单
+       sum(air_arrrive_released_num) as air_arrrive_released_num, -- 已释放运单
+       sum(air_arrrive_detain_num) as air_arrrive_detain_num -- 已关停运单
+FROM
+(
+  -- 不分批
+  SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+         sum(e.taxpaystatus) as air_arrrive_taxpaid_num, -- 已付税运单
+         sum(if(e.customsclearancestatus = 500,1,0)) as air_arrrive_clearanced_num, -- 已清关运单
+         sum(if(e.customsclearancestatusdisplay in ('RELEASE','release','rELEASE'),1,0)) as air_arrrive_released_num, -- 已释放运单
+         sum(if(e.customsclearancestatusdisplay like '%DETAIN%' or e.customsclearancestatusdisplay like '%detain%',1,0)) as air_arrrive_detain_num -- 已关停运单
+  FROM buffaloex2.flightdetail f
+  JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
+  JOIN 
+  (
+    SELECT t1.blnumber,if(count(t1.blnumber) > 1,1,0) as is_batch
+    FROM buffaloex2.flightdetail t1
+    JOIN buffaloex2.blnumber t2 ON t1.blnumber =t2.blnumber
+    GROUP BY t1.blnumber
+  )t2 
+  ON f.blnumber = t2.blnumber
+  JOIN buffaloex2.express e
+  ON f.blnumber = e.blnumber
+  WHERE t2.is_batch = 0
+    AND ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
+    AND date(from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal)/1000)) = date(date_sub(now(), INTERVAL 6 HOUR))
+  
+  UNION ALL
+  -- 分批
+  SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+	     if(sum(cast((f.bags/b.totalboxnumber)*air_arrrive_taxpaid_num as int)) is null,0,sum(cast((f.bags/b.totalboxnumber)*air_arrrive_taxpaid_num as int))) as air_arrrive_taxpaid_num, -- 已付税运单
+         if(sum(cast((f.bags/b.totalboxnumber)*air_arrrive_clearanced_num as int)) is null,0,sum(cast((f.bags/b.totalboxnumber)*air_arrrive_clearanced_num as int))) as air_arrrive_clearanced_num, -- 已清关运单
+         if(sum(cast((f.bags/b.totalboxnumber)*air_arrrive_released_num as int)) is null,0,sum(cast((f.bags/b.totalboxnumber)*air_arrrive_released_num as int))) as air_arrrive_released_num, -- 已释放运单
+         if(sum(cast((f.bags/b.totalboxnumber)*air_arrrive_detain_num as int)) is null,0,sum(cast((f.bags/b.totalboxnumber)*air_arrrive_detain_num as int))) as air_arrrive_detain_num -- 已关停运单
+  FROM buffaloex2.flightdetail f
+  JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
+  JOIN 
+  (
+    SELECT t1.blnumber,if(count(t1.blnumber) > 1,1,0) as is_batch
+    FROM buffaloex2.flightdetail t1
+    JOIN buffaloex2.blnumber t2 ON t1.blnumber =t2.blnumber
+    GROUP BY t1.blnumber
+  )t2 
+  ON f.blnumber = t2.blnumber
+  JOIN 
+  (
+     SELECT blnumber,
+            sum(taxpaystatus) as air_arrrive_taxpaid_num,
+            sum(if(customsclearancestatus = 500,1,0)) as air_arrrive_clearanced_num,
+            sum(if(customsclearancestatusdisplay in ('RELEASE','release','rELEASE'),1,0)) as air_arrrive_released_num,
+            sum(if(customsclearancestatusdisplay like '%DETAIN%' or customsclearancestatusdisplay like '%detain%',1,0)) as air_arrrive_detain_num
+     FROM buffaloex2.express 
+     GROUP BY blnumber
+  )e 
+  ON f.blnumber = e.blnumber
+  WHERE t2.is_batch = 1
+    AND ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
+    AND date(from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal)/1000)) = date(date_sub(now(), INTERVAL 6 HOUR))
+)tmp
+GROUP BY date;
+*/
+-- 各仓库内操作
+-- 入库/出库
+/*
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       c.name as dc, -- 分仓
+       if(a.dc_inbound_num is null,0,a.dc_inbound_num) as dc_inbound_num, -- 分仓入库数量
+       if(b.dc_outbound_num is null,0,b.dc_outbound_num) as dc_outbound_num -- 分仓出库数量
+FROM buffaloex_delivery.storehouse c 
+LEFT JOIN 
+(
+  SELECT a.hubid,
+         count(distinct expressnumber) as dc_inbound_num
+  FROM buffaloex_delivery.expresstimerecord a 
+  LEFT JOIN buffaloex_delivery.express b
+  ON a.expressid = b.id
+  WHERE b.clientid not in ('2272458790721303','2815762535679143')
+    AND date(from_unixtime(if(a.inboundtime>0,a.inboundtime,a.cantransittime)/1000-6*3600)) = date(date_sub(now(), INTERVAL 6 HOUR))
+  GROUP BY 1
+)a
+ON a.hubid = c.id
+LEFT JOIN
+(
+  SELECT a.hubid,
+         count(distinct b.expressnumber) as dc_outbound_num
+  FROM buffaloex_delivery.expresstimerecord a 
+  LEFT JOIN buffaloex_delivery.express b
+  ON a.expressid = b.id
+  WHERE b.clientid not in ('2272458790721303','2815762535679143')
+    AND date(from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime)/1000-6*3600)) = date(date_sub(now(), INTERVAL 6 HOUR))
+  GROUP BY 1
+)b
+ON b.hubid = c.id;
+*/
+-- 机器人分拣量(仅JHB)
+/*
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       count(l.expressnumber) as robot_sorting_num
+FROM buffaloex_robot.libiaorobotpickingrecord l 
+WHERE l.businesshubid = 823519816802652  -- JHB 
+  AND l.expressnumber > '' 
+  AND status in (20,22,30)
+  AND date(from_unixtime(l.createtime/1000-3600*6)) = date(date_sub(now(), INTERVAL 6 HOUR))
+*/
+-- 现在库内剩下
+/*
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       c.name as dc, -- 分仓
+       sum(IF(e.expressnumber is null,0,IF(et.expressnumber is null,1,0))) as dc_unoutbound_num -- 分仓未出库数量
+FROM buffaloex_delivery.storehouse c 
+LEFT JOIN 
+(
+  SELECT a.hubid,e.expressnumber
+  FROM buffaloex_delivery.expresstimerecord a
+  LEFT JOIN buffaloex_delivery.express e
+  ON a.expressid = e.id
+  WHERE e.sendstatus < 80 AND a.inboundtime > 0 AND a.outboundtime = 0 AND a.transittime = 0 AND e.finishtime = 0 AND e.sendstatus = 30 AND a.hubid = e.hubid
+	AND e.discardssign = 0 AND e.ordertype not in (70,90) AND e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') AND e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia  holding状态 异常件
+	AND FROM_UNIXTIME(a.inboundtime/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01' 
+) e
+ON e.hubid = c.id
+LEFT JOIN 
+(
+  SELECT expressnumber
+  FROM ads.ads_exception_total_detail_dd
+  GROUP BY expressnumber
+)et
+ON e.expressnumber = et.expressnumber
+GROUP BY 1,2;
+*/
+/*
+-- 国际件订单创建量
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       count(expressnumber) as admin_create_order_num -- 国际件下单
+FROM buffaloex2.express
+WHERE status < 90 AND FROM_UNIXTIME(createtime/1000-6 * 60 * 60 ,'%Y-%m-%d') = date(date_sub(now(), INTERVAL 6 HOUR))
+*/
