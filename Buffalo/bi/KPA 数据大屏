@@ -360,3 +360,35 @@ SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
 FROM buffaloex2.express
 WHERE status < 90 AND FROM_UNIXTIME(createtime/1000-6 * 60 * 60 ,'%Y-%m-%d') = date(date_sub(now(), INTERVAL 6 HOUR))
 */
+/*
+-- 可出库运单数量
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       count(e.expressnumber) as est_airoutbound_blnumber_num
+FROM  
+(
+  SELECT e.expressnumber
+  FROM buffaloex2.express e,buffaloex2.expressaging a
+  WHERE e.id=a.expressid AND e.status <90 AND a.zainboundtime>0 AND a.taxpaidtime>0 AND a.clearancefinishtime>0 
+        AND a.zaoutboundtime=0 AND a.airportoutboundtime=0
+        AND e.discardssign = 0 AND e.ordertype not in (70,90) AND e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') AND e.status = 67 AND e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia  holding状态 异常件 只保留Scanned in at SA warehouse状态
+        AND FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime)/1000-6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
+) e
+LEFT JOIN 
+(
+  SELECT expressnumber
+  FROM ads.ads_exception_total_detail_dd
+  GROUP BY expressnumber
+)et
+ON e.expressnumber = et.expressnumber
+WHERE et.expressnumber is null;
+*/
+/*
+-- 已出库运单数量
+SELECT date(date_sub(now(), INTERVAL 6 HOUR)) as date,
+       count(ea.expressnumber) as act_airoutbound_blnumber_num
+FROM buffaloex2.expressaging ea 
+LEFT JOIN buffaloex2.express ex ON ea.expressid = ex.id
+WHERE ex.transportmode < 10 
+  AND ex.clientid not in ('2272458790721303','2815762535679143')
+  AND date(from_unixtime(ea.airportoutboundtime/1000-6*3600)) = date(date_sub(now(), INTERVAL 6 HOUR));
+*/
