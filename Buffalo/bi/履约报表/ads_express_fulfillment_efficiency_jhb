@@ -47,7 +47,7 @@ WITH r1 AS
     ON b.expressnumber = c.expressnumber
     WHERE a.hubid = 823519816802652
       AND b.sendstatus < 80
-	  AND (a.outboundtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 OR a.transittime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000) -- #90天前日期
+	  AND (a.inboundtime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000 OR a.cantransittime > UNIX_TIMESTAMP((DATE_FORMAT(NOW() - INTERVAL 90 DAY, '%Y-%m-%d'))) * 1000) -- #90天前日期
   )a
 ), 
 -- 南非仓：快递员出库+快递员取件
