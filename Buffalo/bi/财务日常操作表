@@ -12,7 +12,7 @@ WITH t1 AS
          'Tax commit history' as source_data
   FROM buffaloex2.taxcommitrecord t
   WHERE FROM_UNIXTIME(t.createtime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
-	  AND t.tab not in (1,3) -- 剔除no paid/less paid
+	  AND t.source = 3 -- proof of tax payment
 
   UNION ALL
 
@@ -70,6 +70,20 @@ WITH t1 AS
   FROM buffaloex2.fnbbalancerecord t
   WHERE FROM_UNIXTIME(t.updatetime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
 	  AND t.status = 30 AND companyid = 1 AND (t.result LIKE '%Done Offline%' OR t.result LIKE '%2nd delivery Paid%')
+	
+	UNION ALL	
+
+  SELECT t.createtime as stat_timestamp, -- 中国时间
+	       t.id,
+				 t.expressid,
+				 t.orderno as expressnumber,
+	       t.createuserid as dealproofuserid,
+				 null as dealproofusername,
+	       2 as type,
+         'Tax commit history' as source_data
+  FROM buffaloex2.taxcommitrecord t
+  WHERE FROM_UNIXTIME(t.createtime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
+	  AND t.source = 2 -- unknown
 
   UNION ALL
 
@@ -84,7 +98,7 @@ WITH t1 AS
          'Tax commit history' as source_data
   FROM buffaloex2.taxcommitrecord t
   WHERE FROM_UNIXTIME(t.createtime / 1000,'%Y-%m-%d') = DATE_SUB(CURDATE(),INTERVAL 1 DAY)
-	  AND t.tab in (1,3) -- no paid/less paid
+	  AND t.source = 1 -- tax
 
   UNION ALL
 
