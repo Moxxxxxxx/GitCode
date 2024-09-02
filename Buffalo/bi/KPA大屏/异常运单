@@ -1,0 +1,233 @@
+WITH dayhour AS
+(
+  SELECT DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) AS date,
+         STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') AS date_time
+  FROM  
+  (    
+    SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+    FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+  )t
+  JOIN
+  (
+	SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
+    UNION SELECT '04:00:00' UNION SELECT '05:00:00' UNION SELECT '06:00:00' UNION SELECT '07:00:00'
+    UNION SELECT '08:00:00' UNION SELECT '09:00:00' UNION SELECT '10:00:00' UNION SELECT '11:00:00' 
+    UNION SELECT '12:00:00' UNION SELECT '13:00:00' UNION SELECT '14:00:00' UNION SELECT '15:00:00'
+    UNION SELECT '16:00:00' UNION SELECT '17:00:00' UNION SELECT '18:00:00' UNION SELECT '19:00:00' 
+    UNION SELECT '20:00:00' UNION SELECT '21:00:00' UNION SELECT '22:00:00' UNION SELECT '23:00:00'
+  )hours
+  WHERE DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) <= DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR))
+    AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+  ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
+),
+t1 as 
+(
+  SELECT d.date,
+         d.date_time,
+         'Long time order confirm' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type = 'Long time order confirm' AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'Long time no tracking' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type = 'Long Time No Tracking' AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'Freight Unpaid/Lesspaid' as exception_type,
+          SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct id) as exception_num,from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date
+    FROM buffaloex_delivery.express
+    WHERE (rtsstatus = 0) AND (heavyfreightflg = 0) AND (holdcheck = 0) AND (deliveryflag = 1) 
+      AND (errorstatus <> 4) AND (selfpickflg = 0) AND (discardssign = 0) 
+      AND (expressreceivetime > 0) AND (sendstatus <= 30) AND createtime >= unix_timestamp(DATE_SUB(CURDATE(),INTERVAL 30 DAY)) * 1000 
+    GROUP BY from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d')
+  )e
+  ON d.date >= exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'Review Procedure-commit' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type in ('Long Time Not Commit(Admin)','Long Time Not Commit(Delivery)','Commit Error(Admin)','Commit Error(Delivery)') AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'Wrong Pack' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type = 'Wrong Pack' AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         '3rd Handover' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type = '3PL Handover' AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+    
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'Picking List' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type = 'Picking list' AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'Holding List' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type = 'Holding list' AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'Express Return' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type in ('Courier Wrongly Retuened','Wrong pin Drop','Auto-others') AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'Possible Lost' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type = 'Possible lost' AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'Exceeding SLA of 3PL' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct expressnumber) as exception_num,exception_date
+    FROM ads.ads_exception_total_detail_dd
+    WHERE exception_type in ('Dispatching Overtime','No Tracking Update Overtime','Returning Overtime','Exceeding Total Dispatching time','Exceeding Paxi Client Collect time') AND exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+    GROUP BY exception_date
+  ) dd
+  ON d.date >= dd.exception_date
+  GROUP BY d.date,d.date_time
+  
+  union all
+  
+  SELECT d.date,
+         d.date_time,
+         'RTS' as exception_type,
+         SUM(if(exception_num is null,0,exception_num)) as exception_num
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT count(distinct r.id) as exception_num,from_unixtime(r.createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date
+    FROM buffaloex_delivery.expressrts r
+    JOIN buffaloex_delivery.express e 
+    ON e.id = r.expressid
+    WHERE e.sendstatus < 70 AND lostflg = 0 AND possiblelostflag = 0 AND rtsstatus > 0 AND r.`status` < 40 AND r.createtime >= unix_timestamp(DATE_SUB(CURDATE(),INTERVAL 30 DAY)) * 1000 
+  )r
+  ON d.date >= exception_date
+  GROUP BY d.date,d.date_time
+)
+select *,row_number() over(PARTITION BY date,date_time order by exception_num desc) as rn
+from t1
