@@ -1,0 +1,67 @@
+WITH dayhour AS
+(
+  SELECT DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) AS date,
+         STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') AS date_time
+  FROM  
+  (    
+    SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+    FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+  )t
+  JOIN
+  (
+	SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
+    UNION SELECT '04:00:00' UNION SELECT '05:00:00' UNION SELECT '06:00:00' UNION SELECT '07:00:00'
+    UNION SELECT '08:00:00' UNION SELECT '09:00:00' UNION SELECT '10:00:00' UNION SELECT '11:00:00' 
+    UNION SELECT '12:00:00' UNION SELECT '13:00:00' UNION SELECT '14:00:00' UNION SELECT '15:00:00'
+    UNION SELECT '16:00:00' UNION SELECT '17:00:00' UNION SELECT '18:00:00' UNION SELECT '19:00:00' 
+    UNION SELECT '20:00:00' UNION SELECT '21:00:00' UNION SELECT '22:00:00' UNION SELECT '23:00:00'
+  )hours
+  WHERE DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) <= DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR))
+  AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+  ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
+),
+t1 AS 
+(
+  SELECT from_unixtime(t.transportationdate / 1000,'%Y-%m-%d') as date,
+         from_unixtime(t.transportationdate / 1000,'%Y-%m-%d %H:00:00') as date_time,
+         t.routecode,
+         tt.expressid,
+         t.departuretime,
+         t.offloadingtime,
+         -- count(distinct tt.expressid) as expressnum,
+         -- sum(case when unix_timestamp() - t.departuretime >= r.transittime * 3600 * 1000 then 1 else 0 end) as timeout_num,
+         -- sum(case when unix_timestamp() - t.departuretime < r.transittime * 3600 * 1000 then 1 else 0 end) as normal_num
+         row_number() over(partition by tt.expressid order by tt.createtime desc) as rn
+  FROM buffaloex_delivery.transportationwaybill t
+  LEFT JOIN buffaloex_delivery.transportationbaginfo tb 
+  ON t.waybill = tb.waybill
+  LEFT JOIN buffaloex_delivery.transitpackage tp
+  ON tp.packagenumber = tb.bagno
+  LEFT JOIN buffaloex_delivery.transitpackagedetail tt
+  ON tt.transitpackageid = tp.id
+  LEFT JOIN 
+  (
+    SELECT routecode, 
+           cast(transittime as decimal(11,2)) as transittime 
+    FROM buffaloex_delivery.route
+  ) r 
+  ON r.routecode = t.routecode
+  WHERE t.transportationdate >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000 -- + 6 * 3600 * 1000
+    AND t.transportstatus = 10
+  -- group by t.routecode
+)
+  
+SELECT d.date,
+      d.date_time,
+      r.routecode,
+      count(t1.departuretime) as expressnum,
+      if(sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 >= r.transittime * 3600 * 1000 then 1 else 0 end) is null, 0, sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 >= r.transittime * 3600 * 1000 then 1 else 0 end)) as timeout_num,
+      if(sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 < r.transittime * 3600 * 1000 then 1 else 0 end) is null, 0, sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 < r.transittime * 3600 * 1000 then 1 else 0 end)) as normal_num
+FROM dayhour d
+JOIN buffaloex_delivery.route r
+LEFT JOIN t1 
+ON r.routecode = t1.routecode AND t1.rn = 1 AND d.date = t1.date AND d.date_time >= t1.date_time
+WHERE r.del = 0
+GROUP BY d.date,d.date_time,r.routecode
