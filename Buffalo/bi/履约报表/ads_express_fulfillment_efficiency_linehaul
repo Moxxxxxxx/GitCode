@@ -7,13 +7,14 @@ SELECT t1.expressnumber, -- 订单号
        t2.part_dc_inboundtime, -- 分仓入库
        TIMESTAMPDIFF(second,t1.jhb_dc_outboundtime,t2.part_dc_inboundtime) / 3600 as in_out_spend_time, -- 南非出库-分仓入库
        t1.customer_name,  -- 客户名称
-       t3.province, -- 省份
+       case when t1.customer_name = 'TEMU' and t1.jhb_dc_outboundtime >= '2024-08-01 00:00:00' then UCASE(t4.receiveprovince) else UCASE(t3.province) end as province, -- 省份
        t1.company, -- 快递公司
        t1.sendstatus -- delivery订单状态
 -- 南非出库
 FROM  
 (
-  SELECT b.expressnumber,
+  SELECT b.id,
+         b.expressnumber,
 		 from_unixtime(a.transittime / 1000 - 6 * 3600) as jhb_dc_outboundtime,
 		 CASE WHEN b1.clientid IN ('1882015119836553', '1798940118245893', '2147838856892388', '2147841787248303') THEN 'SHEIN'
 		      WHEN b1.clientid IN ('2689675408624712') THEN 'TEMU'
@@ -56,4 +57,6 @@ LEFT JOIN
 ON t1.expressnumber = t2.expressnumber
 LEFT JOIN `ads_address_info_d` t3
 ON lower(t1.`city`) = lower(t3.`city`) AND lower(t1.`suburb`) =lower(t3.`suburb`) AND t1.`postcode` = t3.`postcode`
+LEFT JOIN buffaloex2.expressextend t4 
+ON t1.id = t4.expressid
 WHERE t2.name IS NOT NULL;
