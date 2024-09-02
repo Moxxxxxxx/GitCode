@@ -3,8 +3,8 @@ Daytime New POP：
 Bank Bill/POP：5PM南非时间这个时点跑数，计算新出现在POP页面的凭证数，出现在页面的时间在统计时间期间：今天中午12AM-今天5PM（南非时间）
 */
 SELECT CURDATE() as belong_date,
-       FROM_UNIXTIME(t.uploadprooffirsttime/1000-6*3600,'%Y-%m-%d') as stat_date,
-       FROM_UNIXTIME(t.uploadprooffirsttime/1000-6*3600,'%Y-%m-%d %H:%i:%s') as stat_time,
+       FROM_UNIXTIME(t.uploadprooftime/1000-6*3600,'%Y-%m-%d') as stat_date,
+       FROM_UNIXTIME(t.uploadprooftime/1000-6*3600,'%Y-%m-%d %H:%i:%s') as stat_time,
 		   t.id,
 			 t.batchnumber as reference,
 		   e.expressnumber,
@@ -24,9 +24,10 @@ LEFT JOIN
 	GROUP BY taxpackageinfoid
 )e
 ON t.id = e.taxpackageinfoid
-WHERE t.uploadprooftime > 0 AND t.dealproofresult = 0 AND t.dealprooftime = 0 AND t.finishtime = 0
-  AND FROM_UNIXTIME(t.uploadprooffirsttime/1000-6*3600,'%Y-%m-%d %H:%i:%s') >= DATE_FORMAT(CURDATE(),'%Y-%m-%d 12:00:00')
-	AND FROM_UNIXTIME(t.uploadprooffirsttime/1000-6*3600,'%Y-%m-%d %H:%i:%s') < DATE_FORMAT(CURDATE(),'%Y-%m-%d 17:00:00')
+WHERE t.uploadprooffirsttime > 0
+-- t.uploadprooftime > 0 AND t.dealproofresult = 0 AND t.dealprooftime = 0 AND t.finishtime = 0
+  AND FROM_UNIXTIME(t.uploadprooftime/1000-6*3600,'%Y-%m-%d %H:%i:%s') >= DATE_FORMAT(CURDATE(),'%Y-%m-%d 12:00:00')
+	AND FROM_UNIXTIME(t.uploadprooftime/1000-6*3600,'%Y-%m-%d %H:%i:%s') < DATE_FORMAT(CURDATE(),'%Y-%m-%d 17:00:00')
 
 UNION ALL
 
