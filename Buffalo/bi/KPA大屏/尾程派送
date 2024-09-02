@@ -1,0 +1,111 @@
+WITH dayhour AS
+(
+  SELECT DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) AS date,
+         STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') AS date_time
+  FROM  
+  (    
+    SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+    FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+  )t
+  JOIN
+  (
+	SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
+    UNION SELECT '04:00:00' UNION SELECT '05:00:00' UNION SELECT '06:00:00' UNION SELECT '07:00:00'
+    UNION SELECT '08:00:00' UNION SELECT '09:00:00' UNION SELECT '10:00:00' UNION SELECT '11:00:00' 
+    UNION SELECT '12:00:00' UNION SELECT '13:00:00' UNION SELECT '14:00:00' UNION SELECT '15:00:00'
+    UNION SELECT '16:00:00' UNION SELECT '17:00:00' UNION SELECT '18:00:00' UNION SELECT '19:00:00' 
+    UNION SELECT '20:00:00' UNION SELECT '21:00:00' UNION SELECT '22:00:00' UNION SELECT '23:00:00'
+  )hours
+  WHERE DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) <= DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR))
+  AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+  ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
+),
+t1 AS
+(
+  SELECT e.expressnumber, 
+         e.id, 
+         -- case when o.expresscompanyid = 3 then 'buffalo' else '3pl' end as expresscompany,
+         from_unixtime(o.createtime / 1000 - 6 * 60 * 60,'%Y-%m-%d') as date,
+         from_unixtime(o.createtime / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00') as date_time,
+         o.expresscompanyid,
+         e.sendstatus,
+         e.lostflg
+  FROM buffaloex_delivery.outbounddeliveryorderdetail o
+  LEFT JOIN buffaloex_delivery.express e 
+  ON o.orderno = e.expressnumber
+  WHERE o.createtime >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+  -- group by e.expressnumber, e.id, o.expresscompanyid, e.lostflg
+),
+-- return
+t2 AS 
+(
+  SELECT t1.date,
+         t1.date_time,
+         t1.expresscompanyid,
+         count(distinct erg.expressid) as returngoodsnum
+  FROM t1
+  LEFT JOIN buffaloex_delivery.expressreturngoods erg 
+  ON t1.id = erg.expressid
+  GROUP BY t1.date,t1.date_time,t1.expresscompanyid
+),
+-- lost、returning
+t3 AS 
+(
+  SELECT date,
+         date_time,
+         expresscompanyid,
+         count(*) as delivery_num,
+         sum(case when lostflg = 0 then 0 else 1 end) as lost_num,
+         sum(case when sendstatus = 64 then 1 else 0 end) as returning_num
+  FROM 
+  (
+    SELECT date,
+           date_time,
+           expressnumber, 
+           expresscompanyid, 
+           lostflg, 
+           sendstatus
+    FROM t1
+    GROUP BY date,date_time,expressnumber,expresscompanyid,lostflg,sendstatus
+  )a 
+  GROUP BY date,date_time,expresscompanyid
+)
+
+SELECT t1.date,
+       t1.date_time,
+       t1.expresscompany,
+       t1.returngoodsnum,
+       t2.delivery_num,
+       t2.lost_num,
+       t2.returning_num
+FROM
+(
+  SELECT d.date,
+         d.date_time,
+         e.name as expresscompany,
+         sum(if(t2.returngoodsnum is null,0,t2.returngoodsnum)) as returngoodsnum
+  FROM dayhour d
+  JOIN buffaloex_delivery.expresscompany e
+  LEFT JOIN t2 
+  ON e.id = t2.expresscompanyid AND d.date = t2.date AND d.date_time >= t2.date_time
+  WHERE e.name IN ('Buffalo','DPD Laser','FastWay','ITT','Skynet')
+  GROUP BY d.date,d.date_time,e.name
+)t1
+LEFT JOIN
+(
+  SELECT d.date,
+         d.date_time,
+         e.name as expresscompany,
+         sum(if(t3.delivery_num is null,0,t3.delivery_num)) as delivery_num,
+         sum(if(t3.lost_num is null,0,t3.lost_num)) as lost_num,
+         sum(if(t3.returning_num is null,0,t3.returning_num)) as returning_num
+  FROM dayhour d
+  JOIN buffaloex_delivery.expresscompany e
+  LEFT JOIN t3
+  ON t3.expresscompanyid = e.id AND d.date = t3.date AND d.date_time >= t3.date_time
+  WHERE e.name IN ('Buffalo','DPD Laser','FastWay','ITT','Skynet')
+  GROUP BY d.date,d.date_time,e.name
+)t2
+ON t1.expresscompany = t2.expresscompany AND t1.date = t2.date AND t1.date_time = t2.date_time
