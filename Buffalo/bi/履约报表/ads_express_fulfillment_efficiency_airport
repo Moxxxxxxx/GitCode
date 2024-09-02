@@ -29,7 +29,8 @@ WITH t1 AS
 ), 
 t2 AS 
 (
-  SELECT e.expressnumber, -- 订单号
+  SELECT e.id, -- 订单id
+         e.expressnumber, -- 订单号
          e.status, -- 订单状态
          e.blnumber,  -- 提单号
          CASE WHEN e.expresscompanyid = 3 THEN 'buffalo'
@@ -99,7 +100,7 @@ SELECT res1.expressnumber, -- 订单号
        res1.city, -- 收件人城市
        res1.postcode, -- 收件人邮编
        res1.suburb, -- 收件人区域
-       res3.province, -- 省份
+       case when res1.customer_name = 'TEMU' and res1.air_arrivaltime >= '2024-08-01 00:00:00' then UCASE(res4.receiveprovince) else UCASE(res3.province) end as province, -- 省份
        res1.status, -- admin订单状态
        res1.admin_status, -- admin订单状态（中文映射）
        res1.air_arrivaltime, -- 机场到达时间（最早）
@@ -133,7 +134,8 @@ SELECT res1.expressnumber, -- 订单号
        (res2.inboundtime_ts  - res1.airportoutboundtime) / 1000 / 3600 as air_out_jhb_in -- 机场出库-南非入库
 FROM 
 (
-  SELECT b.expressnumber, -- 订单号
+  SELECT b.id, -- 订单id
+         b.expressnumber, -- 订单号
          a.blnumber, -- 提单号
          b.admin_status, -- admin订单状态（中文映射）
          IF(b.company is null or length(b.company) = 0,null,b.company) as company, -- 快递公司
@@ -192,4 +194,6 @@ LEFT JOIN
 ON res1.expressnumber = res2.expressnumber
 LEFT JOIN `ads`.`ads_address_info_d` res3
 ON lower(res1.`city`) = lower(res3.`city`) AND lower(res1.`suburb`) = lower(res3.`suburb`) AND res1.`postcode` = res3.`postcode`
+LEFT JOIN buffaloex2.expressextend res4 
+ON res1.id = res4.expressid
 WHERE res1.expressnumber IS NOT NULL;
