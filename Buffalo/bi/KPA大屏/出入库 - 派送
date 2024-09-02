@@ -1,0 +1,113 @@
+WITH dayhour AS
+(
+  SELECT DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) AS date,
+         STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') AS date_time
+  FROM  
+  (    
+    SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+    FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+  )t
+  JOIN
+  (
+	SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
+    UNION SELECT '04:00:00' UNION SELECT '05:00:00' UNION SELECT '06:00:00' UNION SELECT '07:00:00'
+    UNION SELECT '08:00:00' UNION SELECT '09:00:00' UNION SELECT '10:00:00' UNION SELECT '11:00:00' 
+    UNION SELECT '12:00:00' UNION SELECT '13:00:00' UNION SELECT '14:00:00' UNION SELECT '15:00:00'
+    UNION SELECT '16:00:00' UNION SELECT '17:00:00' UNION SELECT '18:00:00' UNION SELECT '19:00:00' 
+    UNION SELECT '20:00:00' UNION SELECT '21:00:00' UNION SELECT '22:00:00' UNION SELECT '23:00:00'
+  )hours
+  WHERE DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) <= DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR))
+  AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+  ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
+),
+t1 as 
+(
+SELECT FROM_UNIXTIME(d.createtime/1000-6*3600,'%Y-%m-%d') as createtime,
+       d.hubid,
+       SUM(d.estpickupassignqty) as est_assign_collection,
+       SUM(d.actpickupassignqty) as act_assigned_collection,
+       SUM(d.excessivepickupassignqty) as unassigned_collection,
+       SUM(d.delayedpickupassignqty) as delayed_assigned_collection,
+       SUM(d.newestpickupqty) as est_pick_up,
+       SUM(d.actpickupqty) as act_pick_up,
+       SUM(d.excessivepickupqty) as failed_pick_up,
+       SUM(d.nopickupbutentersiteqty) as missing_pick_up_scan,
+       SUM(d.pickupandentersiteqty) as entersite,
+       SUM(d.estinboundqty) as est_inbound,
+       SUM(d.actinboundqty) as today_inbound,
+       SUM(d.excessiveinboundqty) as excessive_inbound,
+       SUM(d.delayinginboundqty) as delaying_inbound,
+       SUM(d.estentersiteqty) as est_entersite,
+       SUM(d.actentersiteqty) as today_entersite,
+       SUM(d.reviewinbounduncommitqty) as inbound_uncommitted,
+       SUM(d.reviewwaitingtobepaidqty) as waiting_to_be_paid,
+       SUM(d.reviewinboundcommitqty) as inbound_committed,
+       SUM(d.reviewhfuncommitqty) as hf_uncommitted,
+       SUM(d.reviewhfcommitqty) as hf_committed,
+       SUM(d.esttodayassigntaskqty) as est_assign_task,
+       SUM(d.acttodayassigntaskqty) as act_assigned,
+       SUM(d.unassigneddeliverytaskqty) as unassigned_delivery,
+       SUM(d.assignexcessiveqty) as delayed_assigned_delivery,
+       SUM(d.buffalodrivertotalunscantodispatchqty) as assigned_without_physical_scan,
+       SUM(d.buffalodriverestdriversqty) as est_buffalo_drivers,
+       AVG(d.buffalodriveractdriversqty) as act_buffalo_drivers,
+       SUM(d.buffalodriverwaitdispatchqty) as wait_to_dispatch_pick_orders,
+       SUM(d.buffalodrivertodaydispatchqty) as pick_confirm,
+       SUM(d.buffalodriverexcessivedispatchqty) as delayed_pick_confirm,
+       SUM(d.buffalodrivertotalunsignedqty) as outstanding_pod,
+       SUM(d.buffalodriversigned24hoursqty) as signed_rate_24_Hours,
+       SUM(d.buffalodriversigned48hoursqty) as signed_rate_48_Hours,
+       SUM(d.buffalodriverleavesitesignedqty) as signed_rate_denominator,
+       SUM(d.buffalodriversignedqty) as buffalo_signed,
+       SUM(d.buffalodriverdispatchingqty) as buffalo_dispatching,
+       SUM(d.buffalodriverreturningqty) as buffalo_returning,
+       SUM(d.buffalodriverreturnedqty) as buffalo_returned,
+       SUM(d.couriertotalunscantodispatchfastwayqty) as third_courier_unscan_to_dispatch_fastway,
+       SUM(d.couriertotalunscantodispatchskynetqty) as third_courier_unscan_to_dispatch_skynet,
+       SUM(d.couriertotalunscantodispatchittqty) as third_courier_unscan_to_dispatch_itt,
+       SUM(d.couriertotalunscantodispatchpaxiqty) as third_courier_unscan_to_dispatch_paxi,
+       SUM(d.couriertotalunscantodispatchdpdlaserqty) as third_courier_unscan_to_dispatch_dpdlaser,
+       SUM(d.courierestleavesitefastwayqty) as est_leavesite_fastway,
+       SUM(d.courierestleavesiteskynetqty) as est_leavesite_skynet,
+       SUM(d.courierestleavesiteittqty) as est_leavesite_itt,
+       SUM(d.courierestleavesitepaxiqty) as est_leavesite_paxi,
+       SUM(d.courierestleavesitedpdlaserqty) as est_leavesite_dpdlaser,
+       SUM(d.couriertodayleavesitefastwayqty) as today_leavesite_fastway,
+       SUM(d.couriertodayleavesiteskynetqty) as today_leavesite_skynet,
+       SUM(d.couriertodayleavesiteittqty) as today_leavesite_itty,
+       SUM(d.couriertodayleavesitepaxiqty) as today_leavesite_paxi,
+       SUM(d.couriertodayleavesitedpdlaserqty) as today_leavesite_edpdlaser,
+       SUM(d.courierexcessiveleavesitefastwayqty) as excessive_leavesite_fastway,
+       SUM(d.courierexcessiveleavesiteskynetqty) as excessive_leavesite_skynet,
+       SUM(d.courierexcessiveleavesiteittqty) as excessive_leavesite_itt,
+       SUM(d.courierexcessiveleavesitepaxiqty) as excessive_leavesite_paxi,
+       SUM(d.courierexcessiveleavesitedpdlaserqty) as excessive_leavesite_dpdlaser,
+       SUM(d.clientcollecttotaluncollectqty) as total_client_uncollect,
+       SUM(d.clientcollectactcollectqty) as act_client_collect,
+       AVG(d.transitpackagewaittotransitbagqty) as wait_to_bag_departure,
+       AVG(d.transitpackagetodaytransitbagqty) as actual_bag_departure,
+       SUM(d.transitpackageexcessivetransitbagqty) as excessive_bag_departure
+FROM hubdashboarddata d
+GROUP BY FROM_UNIXTIME(d.createtime/1000-6*3600,'%Y-%m-%d'),d.hubid
+)
+
+SELECT d.date,
+       d.date_time,
+       a.hubid,
+       if(est_inbound is null,0,est_inbound) as est_inbound_num, -- 预计入库数
+       if(today_inbound is null,0,today_inbound) as act_inbound_num, -- 实际入库数
+       if(wait_to_dispatch_pick_orders is null,0,wait_to_dispatch_pick_orders) as buffalo_est_outbound_num, -- buffalo预计出库数
+       if(pick_confirm is null,0,pick_confirm) as buffalo_act_outbound_num, -- buffalo实际出库数
+       if(est_leavesite_fastway is null,0,est_leavesite_fastway) + if(est_leavesite_skynet is null,0,est_leavesite_skynet) + if(est_leavesite_itt is null,0,est_leavesite_itt) + if(est_leavesite_paxi is null,0,est_leavesite_paxi) + if(est_leavesite_dpdlaser is null,0,est_leavesite_dpdlaser) as 3pl_est_outbound_num, -- 3pl预计出库数
+       if(today_leavesite_fastway is null,0,today_leavesite_fastway) + if(today_leavesite_skynet is null,0,today_leavesite_skynet) + if(today_leavesite_itty is null,0,today_leavesite_itty) + if(today_leavesite_paxi is null,0,today_leavesite_paxi) + if(today_leavesite_edpdlaser is null,0,today_leavesite_edpdlaser) as 3pl_act_outbound_num, -- 3pl实际出库数
+       if(wait_to_bag_departure is null,0,wait_to_bag_departure) as linehaul_est_outbound_num, -- linehaul预计出库数
+       if(actual_bag_departure is null,0,actual_bag_departure) as linehaul_act_outbound_num, -- linehaul实际出库数
+-- 尾程派送
+-- 出库派送数-buffalo派送数-same day签收
+       if(signed_rate_24_Hours is null,0,signed_rate_24_Hours) as buffalo_sameday_signed_num, -- buffalo24小时same day签收
+       if(signed_rate_denominator is null,0,signed_rate_denominator) as signed_rate_denominator_num -- 签收分母
+FROM dayhour d
+LEFT JOIN t1 a
+ON d.date = a.createtime
