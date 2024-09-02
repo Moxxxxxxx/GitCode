@@ -213,7 +213,7 @@ SELECT res2.expressnumber, -- 订单号
        res2.city, -- 收件人城市
        res2.postcode, -- 收件人邮编
        res2.suburb, -- 收件人区域
-       res3.province, -- 省份
+       case when res2.customer_name = 'TEMU' and res2.jhb_dc_inboundtime >= '2024-08-01 00:00:00' then UCASE(res4.receiveprovince) else UCASE(res3.province) end as province, -- 省份
        res2.company, -- 快递公司
        res2.sendstatus, -- delivery订单状态
        res2.delivery_status, -- delivery订单状态（中文映射）
@@ -289,4 +289,6 @@ FROM
 ) res2
 LEFT JOIN `ads`.`ads_address_info_d` res3
 ON lower(res2.`city`) = lower(res3.`city`) AND lower(res2.`suburb`) = lower(res3.`suburb`) AND res2.`postcode` = res3.`postcode`
+LEFT JOIN buffaloex2.expressextend res4 
+ON res2.expressid = res4.expressid
 WHERE res2.expressnumber IS NOT NULL;
