@@ -1,0 +1,50 @@
+WITH dayhour AS
+(
+  SELECT DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) AS date,
+         STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') AS date_time
+  FROM  
+  (    
+    SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+    FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+  )t
+  JOIN
+  (
+	SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
+    UNION SELECT '04:00:00' UNION SELECT '05:00:00' UNION SELECT '06:00:00' UNION SELECT '07:00:00'
+    UNION SELECT '08:00:00' UNION SELECT '09:00:00' UNION SELECT '10:00:00' UNION SELECT '11:00:00' 
+    UNION SELECT '12:00:00' UNION SELECT '13:00:00' UNION SELECT '14:00:00' UNION SELECT '15:00:00'
+    UNION SELECT '16:00:00' UNION SELECT '17:00:00' UNION SELECT '18:00:00' UNION SELECT '19:00:00' 
+    UNION SELECT '20:00:00' UNION SELECT '21:00:00' UNION SELECT '22:00:00' UNION SELECT '23:00:00'
+  )hours
+  WHERE DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) <= DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR))
+  AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+  ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
+)
+
+SELECT d.date,
+       d.date_time,
+       sum(if(e.6days_signed_num is null,0,e.6days_signed_num)) as 6days_signed_num, -- 6天签收
+       sum(if(e.7days_signed_num is null,0,e.7days_signed_num)) as 7days_signed_num, -- 7天签收
+       sum(if(e.8days_signed_num is null,0,e.8days_signed_num)) as 8days_signed_num, -- 8天签收
+       sum(if(e.total_signed_num is null,0,e.total_signed_num)) as total_signed_num
+FROM dayhour d
+LEFT JOIN 
+(
+  SELECT from_unixtime(e2.signedtime / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+         from_unixtime(e2.signedtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+         SUM(IF(IF(e.clientid IN (2689675408624712),((e2.signedtime - e.africareceivetime) / 1000 / 3600) - (if(e2.taxpaidtime <= e.africareceivetime,0,(e2.taxpaidtime - e.africareceivetime) / 1000 / 3600)),(e2.signedtime - e.africareceivetime) / 1000 / 3600) <= 144,1,0)) as 6days_signed_num, -- 6天签收
+         SUM(IF(IF(e.clientid IN (2689675408624712),((e2.signedtime - e.africareceivetime) / 1000 / 3600) - (if(e2.taxpaidtime <= e.africareceivetime,0,(e2.taxpaidtime - e.africareceivetime) / 1000 / 3600)),(e2.signedtime - e.africareceivetime) / 1000 / 3600) <= 168,1,0)) as 7days_signed_num, -- 7天签收
+         SUM(IF(IF(e.clientid IN (2689675408624712),((e2.signedtime - e.africareceivetime) / 1000 / 3600) - (if(e2.taxpaidtime <= e.africareceivetime,0,(e2.taxpaidtime - e.africareceivetime) / 1000 / 3600)),(e2.signedtime - e.africareceivetime) / 1000 / 3600) <= 192,1,0)) as 8days_signed_num, -- 8天签收
+         SUM(IF(e2.signedtime > 0,1,0)) as total_signed_num
+  FROM buffaloex2.express e 
+  JOIN buffaloex2.expressaging e2
+  ON e2.expressid = e.id 
+  WHERE e.status < 90 AND e2.signedtime >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+  group by from_unixtime(e2.signedtime / 1000 - 6 * 3600,'%Y-%m-%d'),
+           from_unixtime(e2.signedtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00')
+)e
+ON d.date = e.date AND d.date_time >= e.date_time
+GROUP BY d.date,d.date_time
+ORDER BY d.date,d.date_time
