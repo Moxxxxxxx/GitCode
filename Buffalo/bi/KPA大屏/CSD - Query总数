@@ -25,7 +25,8 @@ WITH dayhour AS
 
 SELECT d.date,
        d.date_time,
-       IF(q.validsessioncnt is null,0,q.validsessioncnt) as validsessioncnt
+       IF(q.validsessioncnt is null,0,q.validsessioncnt) as validsessioncnt,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
 FROM dayhour d
 LEFT JOIN 
 (
