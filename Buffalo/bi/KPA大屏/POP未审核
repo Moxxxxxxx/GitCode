@@ -22,21 +22,47 @@ WITH dayhour AS
   AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
   ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
 )
-  
 
-SELECT d.date,
-       d.date_time,
-       sum(IF(t.pop_unprocessed_num is null,0,t.pop_unprocessed_num)) as pop_unprocessed_num -- pop未审核数
-FROM dayhour d
+SELECT d1.date,
+       d1.date_time, 
+       d1.pop_unprocessed_num, -- pop未审核数
+       d2.unknown_num -- unknown数
+FROM
+( 
+  SELECT d.date,
+         d.date_time,
+         sum(IF(t.pop_unprocessed_num is null,0,t.pop_unprocessed_num)) as pop_unprocessed_num -- pop未审核数
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT from_unixtime(t.uploadprooftime / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+           from_unixtime(t.uploadprooftime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+           count(t.id) as pop_unprocessed_num -- pop未审核数
+    FROM buffaloex2.taxpackageinfo t
+    WHERE t.uploadprooftime > 0 AND t.dealproofresult = 0 AND t.dealprooftime = 0 AND t.finishtime = 0
+    GROUP BY from_unixtime(t.uploadprooftime / 1000 - 6 * 3600,'%Y-%m-%d'),
+             from_unixtime(t.uploadprooftime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00')
+  )t 
+  ON d.date >= t.date AND d.date_time >= t.date_time
+  GROUP BY d.date,d.date_time
+)d1
 LEFT JOIN 
 (
-  SELECT from_unixtime(t.uploadprooftime / 1000 - 6 * 3600,'%Y-%m-%d') as date,
-         from_unixtime(t.uploadprooftime / 1000 - 6 * 3600,'%Y-%m-%d %H:%i:%s') as date_time,
-         count(t.id) as pop_unprocessed_num -- pop未审核数
-  FROM buffaloex2.taxpackageinfo t
-  WHERE t.uploadprooftime > 0 AND t.dealproofresult = 0 AND t.dealprooftime = 0 AND t.finishtime = 0
-  GROUP BY from_unixtime(t.uploadprooftime / 1000 - 6 * 3600,'%Y-%m-%d'),
-           from_unixtime(t.uploadprooftime / 1000 - 6 * 3600,'%Y-%m-%d %H:%i:%s')
-)t 
-ON d.date = t.date AND d.date_time >= t.date_time
-GROUP BY d.date,d.date_time
+  SELECT d.date,
+         d.date_time,
+         sum(IF(t.unknown_num is null,0,t.unknown_num)) as unknown_num -- unknown数
+  FROM dayhour d
+  LEFT JOIN 
+  (
+    SELECT from_unixtime(t.updatetime / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+           from_unixtime(t.updatetime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+           count(t.id) as unknown_num -- unknown数
+    FROM buffaloex2.fnbbalancerecord t
+    WHERE t.status = 20 AND companyid = 1
+    GROUP BY from_unixtime(t.updatetime / 1000 - 6 * 3600,'%Y-%m-%d'),
+             from_unixtime(t.updatetime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00')
+  )t 
+  ON d.date >= t.date AND d.date_time >= t.date_time
+  GROUP BY d.date,d.date_time
+)d2
+ON d1.date = d2.date AND d1.date_time = d2.date_time
