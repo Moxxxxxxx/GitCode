@@ -1,0 +1,121 @@
+WITH dayhour AS
+(
+  SELECT DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) AS date,
+         STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') AS date_time
+  FROM  
+  (    
+    SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+    FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+  )t
+  JOIN
+  (
+	SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
+    UNION SELECT '04:00:00' UNION SELECT '05:00:00' UNION SELECT '06:00:00' UNION SELECT '07:00:00'
+    UNION SELECT '08:00:00' UNION SELECT '09:00:00' UNION SELECT '10:00:00' UNION SELECT '11:00:00' 
+    UNION SELECT '12:00:00' UNION SELECT '13:00:00' UNION SELECT '14:00:00' UNION SELECT '15:00:00'
+    UNION SELECT '16:00:00' UNION SELECT '17:00:00' UNION SELECT '18:00:00' UNION SELECT '19:00:00' 
+    UNION SELECT '20:00:00' UNION SELECT '21:00:00' UNION SELECT '22:00:00' UNION SELECT '23:00:00'
+  )hours
+  WHERE DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) <= DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR))
+  AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+  ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
+),
+t1 as
+(
+  SELECT t2.date,
+         t2.date_time,
+         t2.name,
+         t2.3pl_num,
+         t2.fastway_3pl_num,
+         t2.skynet_3pl_num,
+         t2.itt_3pl_num,
+         t2.dpd_3pl_num
+  FROM
+  (
+    SELECT d.date,
+           d.date_time,
+           c.name,
+           SUM(if(b.3pl_num is null,0,b.3pl_num)) as 3pl_num,
+           SUM(if(b.fastway_3pl_num is null,0,b.fastway_3pl_num)) as fastway_3pl_num,
+           SUM(if(b.skynet_3pl_num is null,0,b.skynet_3pl_num)) as skynet_3pl_num,
+           SUM(if(b.itt_3pl_num is null,0,b.itt_3pl_num)) as itt_3pl_num,
+           SUM(if(b.dpd_3pl_num is null,0,b.dpd_3pl_num)) as dpd_3pl_num
+    FROM dayhour d
+    JOIN buffaloex_delivery.storehouse c 
+    LEFT JOIN
+    (
+      SELECT from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d') as date,
+             from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00') as date_time,
+             a.hubid,
+             sum(if(((a.outboundtime > 0 AND a.transittime = 0) OR a.outboundtime >= a.transittime) AND b.expresscompanyid in (2,8,2266452665457878,2590541559123122),1,0)) as 3pl_num,
+             sum(if(((a.outboundtime > 0 AND a.transittime = 0) OR a.outboundtime >= a.transittime) AND b.expresscompanyid = 2,1,0)) as fastway_3pl_num,
+             sum(if(((a.outboundtime > 0 AND a.transittime = 0) OR a.outboundtime >= a.transittime) AND b.expresscompanyid = 8,1,0)) as skynet_3pl_num,
+             sum(if(((a.outboundtime > 0 AND a.transittime = 0) OR a.outboundtime >= a.transittime) AND b.expresscompanyid = 2266452665457878,1,0)) as itt_3pl_num,
+             sum(if(((a.outboundtime > 0 AND a.transittime = 0) OR a.outboundtime >= a.transittime) AND b.expresscompanyid = 2590541559123122,1,0)) as dpd_3pl_num
+      FROM buffaloex_delivery.expresstimerecord a 
+      LEFT JOIN buffaloex_delivery.express b
+      ON a.expressid = b.id
+      WHERE b.clientid not in ('2272458790721303','2815762535679143')
+        And if(a.outboundtime > 0,a.outboundtime,a.transittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+      GROUP BY a.hubid,
+               from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d'),
+               from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00')
+    )b
+    ON b.hubid = c.id AND d.date = b.date AND d.date_time >= b.date_time
+    GROUP BY c.name,d.date,d.date_time
+  )t2
+)
+
+SELECT date,
+       date_time,
+       'Total' as type,
+       name,
+       3pl_num as 3pl_outbound_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
+FROM t1
+  
+UNION ALL
+  
+SELECT date,
+       date_time,
+       'FastWay' as type,
+       null as name,
+       SUM(fastway_3pl_num) as 3pl_outbound_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
+FROM t1
+GROUP BY date,date_time
+
+UNION ALL
+
+SELECT date,
+       date_time,
+       'Skynet' as type,
+       null as name,
+       SUM(skynet_3pl_num) as 3pl_outbound_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
+FROM t1
+GROUP BY date,date_time
+
+UNION ALL
+
+SELECT date,
+       date_time,
+       'ITT' as type,
+       null as name,
+       SUM(itt_3pl_num) as 3pl_outbound_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
+FROM t1
+GROUP BY date,date_time
+ 
+UNION ALL
+
+SELECT date,
+       date_time,
+       'DPD Laser' as type,
+       null as name,
+       SUM(dpd_3pl_num) as 3pl_outbound_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
+FROM t1
+GROUP BY date,date_time
