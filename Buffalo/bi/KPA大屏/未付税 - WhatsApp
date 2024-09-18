@@ -1,0 +1,94 @@
+WITH dayhour AS
+(
+  SELECT DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) AS date,
+         STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') AS date_time
+  FROM  
+  (    
+    SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
+    FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
+         (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS c
+  )t
+  JOIN
+  (
+	SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
+    UNION SELECT '04:00:00' UNION SELECT '05:00:00' UNION SELECT '06:00:00' UNION SELECT '07:00:00'
+    UNION SELECT '08:00:00' UNION SELECT '09:00:00' UNION SELECT '10:00:00' UNION SELECT '11:00:00' 
+    UNION SELECT '12:00:00' UNION SELECT '13:00:00' UNION SELECT '14:00:00' UNION SELECT '15:00:00'
+    UNION SELECT '16:00:00' UNION SELECT '17:00:00' UNION SELECT '18:00:00' UNION SELECT '19:00:00' 
+    UNION SELECT '20:00:00' UNION SELECT '21:00:00' UNION SELECT '22:00:00' UNION SELECT '23:00:00'
+  )hours
+  WHERE DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) <= DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR))
+  AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+  ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
+),
+t1 AS 
+(
+  SELECT e.expressnumber,
+         h.channelcode,
+         h.taxrecorddetailid,
+         h.status,
+         t.payflag, -- 是否已付税 0：否， 1：是
+         date(from_unixtime(t.paytime / 1000 - 6 * 3600, '%Y-%m-%d')) as paydate,
+         STR_TO_DATE(from_unixtime(h.createtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00'),'%Y-%m-%d %H:00:00') as createhour,
+         t.paytime,
+         h.createtime,
+         h.answeredtime,
+         h.deliveredtime,
+         row_number() over(partition by h.taxrecorddetailid order by h.modifytime desc) as rn,
+         date(from_unixtime(h.createtime / 1000 - 6 * 3600, '%Y-%m-%d')) as createdate
+  FROM buffaloex2.`huaweiwhatsapprecord` h
+  LEFT JOIN buffaloex2.taxrecorddetail t 
+  ON h.taxrecorddetailid = t.id
+  LEFT JOIN buffaloex2.express e 
+  ON t.expressid = e.id
+  WHERE h.createtime >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 30 DAY)) * 1000
+),
+result as
+(
+  SELECT d.date,
+         d.date_time,
+         count(expressnumber) as total_amount,
+         sum(case when status in (2, 3, 4) and channelcode != 'hw_sms' then 1 else 0 end) as send_amount,
+         sum(case when status = 5 or channelcode = 'hw_sms'  then 1 else 0 end) as failed_amount,
+         sum(case when status in (3, 4) then 1 else 0 end) as delivered_amount,
+         sum(case when status = 4 then 1 else 0 end) as read_amount,
+         -- round(sum(case when status = 4 then answeredtime - deliveredtime else 0 end) / sum(case when status = 4 then 1 else 0 end)/1000/60/60, 2) as avg_time_of_delivered_to_read,
+         -- sum(case when payflag = 1 and paydate = createdate then 1 else 0 end) / count(*) as day_collect_tax_rate,
+         -- sum(case when payflag = 1 and paytime - createtime <= 3 * 24 * 3600 * 1000 then 1 else 0 end) / count(*) as collect_tax_rate_in_three_days
+         sum(case when status = 4 then answeredtime - deliveredtime else 0 end) as time_of_delivered_to_read,
+         sum(case when payflag = 1 and paydate = createdate then 1 else 0 end) as day_collect_tax,
+         sum(case when payflag = 1 and paytime - createtime <= 3 * 24 * 3600 * 1000 then 1 else 0 end) as collect_tax_in_three_days
+  FROM dayhour d
+  LEFT JOIN t1
+  ON d.date = t1.createdate AND d.date_time >= t1.createhour AND rn = 1
+  GROUP BY d.date,d.date_time
+)
+  
+SELECT date,
+       date_time,
+       1 as class,
+       'send_amount' as type,
+       send_amount as whatsapp_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
+FROM result
+  
+UNION ALL
+
+SELECT date,
+       date_time,
+       2 as class,
+       'delivered_amount' as type,
+       delivered_amount as whatsapp_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
+FROM result
+
+UNION ALL 
+
+SELECT date,
+       date_time,
+       2 as class,
+       'read_amount' as type,
+       read_amount as whatsapp_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
+FROM result
