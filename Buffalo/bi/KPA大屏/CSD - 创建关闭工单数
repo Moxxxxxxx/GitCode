@@ -23,7 +23,12 @@ WITH dayhour AS
   ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
 )
   
-
+SELECT a.date,
+       a.date_time,
+       a.ticket_num as create_num,
+       b.ticket_num as complete_num
+FROM
+(
 SELECT d.date,
        d.date_time,
        SUM(IF(q.ticket_num is null,0,q.ticket_num)) as ticket_num
@@ -39,3 +44,23 @@ LEFT JOIN
 ) q
 ON d.date = q.date AND d.date_time >= q.date_time
 GROUP BY d.date,d.date_time
+)a
+LEFT JOIN
+(
+SELECT d.date,
+       d.date_time,
+       SUM(IF(q.ticket_num is null,0,q.ticket_num)) as ticket_num
+FROM dayhour d
+LEFT JOIN 
+(
+  SELECT DATE(DATE_FORMAT(timetocomplete,'%Y-%m-%d %H:00:00')) as date,
+         DATE_FORMAT(timetocomplete,'%Y-%m-%d %H:00:00') as date_time,
+         count(distinct ticketid) as ticket_num
+  FROM buffaloex_delivery.quickcepticket
+  WHERE statusfordata  ='5' AND DATE_FORMAT(timetocomplete,'%Y-%m-%d') >= DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)
+  GROUP BY DATE(DATE_FORMAT(timetocomplete,'%Y-%m-%d %H:00:00')),DATE_FORMAT(timetocomplete,'%Y-%m-%d %H:00:00')
+) q
+ON d.date = q.date AND d.date_time >= q.date_time
+GROUP BY d.date,d.date_time
+)b
+ON a.date = b.date AND a.date_time = b.date_time
