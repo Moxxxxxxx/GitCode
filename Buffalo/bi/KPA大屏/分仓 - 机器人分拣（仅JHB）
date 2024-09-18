@@ -31,7 +31,7 @@ LEFT JOIN
 (
   SELECT from_unixtime(l.createtime / 1000 - 6 * 3600,'%Y-%m-%d') as date,
          from_unixtime(l.createtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
-         count(distinct l.expressnumber) as robot_sorting_num
+         count(l.expressnumber) as robot_sorting_num
   FROM buffaloex_robot.libiaorobotpickingrecord l 
   WHERE l.businesshubid = 823519816802652  -- JHB 
     AND l.expressnumber > '' 
