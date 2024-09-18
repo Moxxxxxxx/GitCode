@@ -1,0 +1,49 @@
+with t1 as 
+(
+SELECT expressnumber,exception_type,exception_date
+FROM ads.ads_exception_total_detail_dd
+WHERE exception_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
+),
+t2 as 
+(
+select t1.expressnumber,
+t1.exception_type,
+case e.sendstatus 
+when -3 then "Tax Unpaid and not committed Inbound"
+when -2 then "Tax Unpaid and not committed Confirmed"
+when 1 then "Unpaid Confirmed"
+when  2 THEN "Not Committed Confirmed"
+when  3 THEN "Not Committed Inbound"
+when  5 THEN "Order Confirmed-下单成功"
+when  13 THEN "Pick Complete-已取件"
+when  17 THEN "Pack Complete-打包完成"
+when  20 THEN "In the Transit-转运中"
+when  30 THEN "Inbound-已入库"
+when  45 THEN "Wait Delivery-待派送"
+when  50 THEN "Dispatching-派送中"
+when  60 THEN "The Second Delivery-二次派送"
+when  64 THEN "Returning-退货中"
+when  65 THEN "Return Goods-退货"
+when  70 THEN "Client Received-签收"
+when  80 THEN "Shut Out-关单"
+when  90 THEN "Cancel-取消"
+end as delivery_status,
+s.name as dc,
+c.name as expresscompany,
+r.displaytime,
+r.content,
+r.module,
+row_number() over(partition by e.id order by r.createtime desc) rn
+from t1
+left join buffaloex_delivery.express e
+on t1.expressnumber = e.expressnumber
+left join buffaloex_delivery.storehouse s
+on e.hubid = s.id
+left join buffaloex_delivery.expresscompany c
+on e.expresscompanyid = c.id
+left join buffaloex_delivery.expressrecord r
+on e.id = r.expressid and r.del = 0
+)
+select *
+from t2
+where rn =1
