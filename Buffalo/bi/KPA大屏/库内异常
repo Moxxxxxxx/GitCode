@@ -11,7 +11,7 @@ WITH dayhour AS
   )t
   JOIN
   (
-    SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
+	SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
     UNION SELECT '04:00:00' UNION SELECT '05:00:00' UNION SELECT '06:00:00' UNION SELECT '07:00:00'
     UNION SELECT '08:00:00' UNION SELECT '09:00:00' UNION SELECT '10:00:00' UNION SELECT '11:00:00' 
     UNION SELECT '12:00:00' UNION SELECT '13:00:00' UNION SELECT '14:00:00' UNION SELECT '15:00:00'
@@ -19,132 +19,24 @@ WITH dayhour AS
     UNION SELECT '20:00:00' UNION SELECT '21:00:00' UNION SELECT '22:00:00' UNION SELECT '23:00:00'
   )hours
   WHERE DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) <= DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR))
-    AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+  AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
   ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
+),
+t1 as 
+(
+SELECT FROM_UNIXTIME(d.createtime/1000-6*3600,'%Y-%m-%d') as createtime,
+       d.hubid,
+       SUM(d.clientcollecttotaluncollectqty) as total_client_uncollect
+FROM hubdashboarddata d
+GROUP BY FROM_UNIXTIME(d.createtime/1000-6*3600,'%Y-%m-%d'),d.hubid
 )
+  
 
 SELECT d.date,
        d.date_time,
-       'Return Goods' as exception_type,
-       sum(if(erg.exception_num is null,0,erg.exception_num)) as exception_num
+       'Client Collect' as exception_type,
+       SUM(if(total_client_uncollect is null,0,total_client_uncollect)) as exception_num
 FROM dayhour d
-LEFT JOIN 
-(
-  SELECT count(distinct erg.expressid) as exception_num,from_unixtime(erg.createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date
-  FROM buffaloex_delivery.outbounddeliveryorderdetail o
-  JOIN  buffaloex_delivery.express e 
-  ON o.orderno = e.expressnumber
-  JOIN  buffaloex_delivery.expressreturngoods erg 
-  ON e.id  = erg.expressid
-  WHERE o.createtime >= unix_timestamp(DATE_SUB(CURDATE(),INTERVAL 30 DAY)) * 1000 + 6 * 3600 * 1000
-  GROUP BY from_unixtime(erg.createtime / 1000 - 6 * 3600,'%Y-%m-%d')
-)erg
-ON d.date >= erg.exception_date
-GROUP BY d.date,d.date_time
-
-union all
-  
-SELECT d.date,
-       d.date_time,
-       'Holding List' as exception_type,
-        sum(if(dd.exception_num is null,0,dd.exception_num)) as exception_num
-FROM dayhour d
-LEFT JOIN 
-(
-  SELECT count(distinct dd.expressnumber) as exception_num,dd.exception_date
-  FROM ads.ads_exception_total_detail_dd dd
-  LEFT JOIN buffaloex_delivery.express e
-  ON dd.expressnumber = e.expressnumber
-  WHERE dd.exception_type = 'Holding list' and e.sendstatus = 30
-  GROUP BY dd.exception_date
-)dd
-ON d.date >= dd.exception_date
-GROUP BY d.date,d.date_time
-  
-union all
-  
-SELECT d.date,
-       d.date_time,
-       'Unassign' as exception_type,
-        sum(if(t.exception_num is null,0,t.exception_num)) as exception_num
-FROM dayhour d
-LEFT JOIN 
-(
-  SELECT count(distinct a.id) as exception_num,from_unixtime(a.createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date
-  FROM buffaloex_delivery.assign a 
-  LEFT JOIN  buffaloex_delivery.storehouse s 
-  ON a.hubid = s.id
-  WHERE (a.delaytime <=1724450400000 or a.ordertype = 5 ) 
-  -- AND (bookingdeliverytime <= ?) 
-  AND (display = 0) 
-  -- AND (hubid = ?) 
-  AND (a.`status` = 0)
-  GROUP BY from_unixtime(a.createtime / 1000 - 6 * 3600,'%Y-%m-%d')
-)t
-ON d.date >= t.exception_date
-GROUP BY d.date,d.date_time
-  
-union all
-  
-SELECT d.date,
-       d.date_time,
-       'Commit Error' as exception_type,
-       count(distinct expressnumber) as exception_num
-FROM dayhour d
-LEFT JOIN ads.ads_exception_total_detail_dd dd
-ON d.date >= dd.exception_date AND exception_type in ('Commit Error(Admin)','Commit Error(Delivery)')
-GROUP BY d.date,d.date_time
-  
-union all
-  
-SELECT d.date,
-       d.date_time,
-       'Delivery/delivery arrangement' as exception_type,
-       SUM(if(dd.num is null,0,dd.num)) as exception_num
-FROM dayhour d
-LEFT JOIN
-( 
-  -- doing
-  SELECT from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date,
-         from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as exception_time,
-         'Doing' as da_type,
-         count(distinct e.id) as num
-  FROM buffaloex_delivery.express e
-  WHERE (selfpickflg = 0) AND (discardssign = 0) AND (errorstatus >= 10) AND (checkstatus = -1) AND (sendstatus = 30) -- AND (storehouseid = ?)
-    AND createtime >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
-  GROUP BY from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d'),from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00')
-
-  UNION ALL
-  -- check
-  SELECT from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date,
-         from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as exception_time,
-         'Check' as da_type,
-         count(distinct e.id) as num
-  FROM buffaloex_delivery.express e
-  WHERE (selfpickflg = 0) AND (errorstatus = 2) AND (discardssign = 0) AND (checkstatus = -1) AND (sendstatus = 30) -- AND (storehouseid = ?) 
-    AND createtime >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
-  GROUP BY from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d'),from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00')
-  
-  UNION ALL
-  -- Lock Detail
-  SELECT from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date,
-         from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as exception_time,
-         'Lock Detail' as da_type,
-         count(distinct e.id) as num
-  FROM buffaloex_delivery.express e
-  WHERE (lockuserid > 0) AND (sendstatus < 70) AND createtime >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
-  GROUP BY from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d'),from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00')
-)dd
-ON d.date >= dd.exception_date AND d.date_time >= dd.exception_time
-GROUP BY d.date,d.date_time
-  
-union all
-  
-SELECT d.date,
-       d.date_time,
-       'Lost' as exception_type,
-       count(distinct l.id) as exception_num
-FROM dayhour d
-LEFT JOIN buffaloex2.expresslostrecord l
-ON d.date >= from_unixtime(l.createtime / 1000 - 6 * 3600,'%Y-%m-%d') AND type = 2 AND l.createtime >= unix_timestamp(DATE_SUB(CURDATE(),INTERVAL 30 DAY)) * 1000 
+LEFT JOIN t1
+ON d.date >= createtime
 GROUP BY d.date,d.date_time
