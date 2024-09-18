@@ -3,7 +3,7 @@ WITH dayhour AS
   SELECT DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) AS date,
          STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') AS date_time
   FROM  
-  (    
+  (     
     SELECT a.N + b.N * 10 + c.N * 100 + 1 AS n
     FROM (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS a,
          (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) AS b,
@@ -26,6 +26,7 @@ t1 AS
 (
   SELECT from_unixtime(t.transportationdate / 1000,'%Y-%m-%d') as date,
          from_unixtime(t.transportationdate / 1000,'%Y-%m-%d %H:00:00') as date_time,
+         t.id,
          t.routecode,
          tt.expressid,
          t.departuretime,
@@ -54,11 +55,13 @@ t1 AS
 )
   
 SELECT d.date,
-      d.date_time,
-      r.routecode,
-      count(t1.departuretime) as expressnum,
-      if(sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 >= r.transittime * 3600 * 1000 then 1 else 0 end) is null, 0, sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 >= r.transittime * 3600 * 1000 then 1 else 0 end)) as timeout_num,
-      if(sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 < r.transittime * 3600 * 1000 then 1 else 0 end) is null, 0, sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 < r.transittime * 3600 * 1000 then 1 else 0 end)) as normal_num
+       d.date_time,
+       r.routecode,
+       count(distinct t1.id) as transwaybillnum,
+       count(t1.departuretime) as expressnum,
+       if(sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 >= r.transittime * 3600 * 1000 then 1 else 0 end) is null, 0, sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 >= r.transittime * 3600 * 1000 then 1 else 0 end)) as timeout_num,
+       if(sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 < r.transittime * 3600 * 1000 then 1 else 0 end) is null, 0, sum(case when unix_timestamp(d.date_time) * 1000  - t1.departuretime + 6 * 3600 * 1000 < r.transittime * 3600 * 1000 then 1 else 0 end)) as normal_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
 FROM dayhour d
 JOIN buffaloex_delivery.route r
 LEFT JOIN t1 
