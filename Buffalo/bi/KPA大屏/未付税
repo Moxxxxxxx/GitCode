@@ -114,7 +114,7 @@ SELECT d.date,
        d.date_time,
        'Unpaid' as type,
        '24h' as spend,
-       sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 24 * 3600 * 1000 AND unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime < 48 * 3600 * 1000,1,0)) as num
+       sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 24 * 3600 * 1000,1,0)) as num
 FROM dayhour d
 LEFT JOIN t2
 ON d.date = t2.date AND d.date_time >= t2.date_time 
@@ -126,7 +126,7 @@ SELECT d.date,
        d.date_time,
        'Unpaid' as type,
        '48h' as spend,
-       sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime >= 48 * 3600 * 1000 and unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime < 72 * 3600 * 1000,1,0)) as num
+       sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime >= 48 * 3600 * 1000,1,0)) as num
 FROM dayhour d
 LEFT JOIN t2
 ON d.date = t2.date AND d.date_time >= t2.date_time
@@ -150,7 +150,7 @@ SELECT d.date,
        d.date_time,
        'Paid' as type,
        '24h' as spend,
-       if(sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 24 * 3600 * 1000 AND unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime < 48 * 3600 * 1000,1,0)) = 0,0,t1.num - sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 24 * 3600 * 1000 AND unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime < 48 * 3600 * 1000,1,0))) as num
+       if(sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 24 * 3600 * 1000,1,0)) = 0,0,t1.num - sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 24 * 3600 * 1000,1,0))) as num
 FROM dayhour d
 LEFT JOIN 
 (
@@ -175,7 +175,7 @@ SELECT d.date,
        d.date_time,
        'Paid' as type,
        '48h' as spend,
-       if(sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 48 * 3600 * 1000 AND unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime < 72 * 3600 * 1000,1,0)) = 0,0,t1.num - sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 48 * 3600 * 1000 AND unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime < 72 * 3600 * 1000,1,0))) as num
+       if(sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 48 * 3600 * 1000,1,0)) = 0,0,t1.num - sum(if(unix_timestamp(d.date_time) * 1000 - t2.firstnoticetime > 48 * 3600 * 1000,1,0))) as num
 FROM dayhour d
 LEFT JOIN 
 (
