@@ -28,89 +28,345 @@ SELECT t1.date,
        t1.dc,
        t1.dc_inbound_num,
        t2.dc_outbound_num,
-       t3.dc_unoutbound_num
+       t3.dc_unoutbound_num,
+       t4.dc_picklist_num,
+       t4.bag_transit_picklist_num,
+       t4.leavesite_picklist_num,
+       t4.dispatch_pick_picklist_num,
+       t1.dc_inountbound_num,
+       t1.buffalo_inountbound_num,
+       t1.3pl_inountbound_num,
+       t1.transit_inountbound_num,
+       t1.dc_inunountbound_num,
+       t1.buffalo_inunountbound_num,
+       t1.3pl_inunountbound_num,
+       t1.transit_inunountbound_num,
+       t2.jhb_buffalo_num,
+       t2.jhb_3pl_num,
+       t2.jhb_transit_num,
+       t5.holding_list_exception_num,
+       t5.unassign_exception_num,
+       t5.commit_error_exception_num,
+       t5.delivery_arrangement_exception_num,
+       t5.lost_exception_num,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
 FROM
 (
-SELECT d.date,
-       d.date_time,
-       c.name as dc, -- 分仓
-       SUM(if(a.dc_inbound_num is null,0,a.dc_inbound_num)) as dc_inbound_num -- 分仓入库数量
-FROM dayhour d
-JOIN buffaloex_delivery.storehouse c 
-LEFT JOIN 
-(
-  SELECT from_unixtime(if(a.inboundtime>0, a.inboundtime, a.cantransittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d') as date,
-         from_unixtime(if(a.inboundtime>0, a.inboundtime, a.cantransittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00') as date_time,
-         a.hubid,
-         count(distinct expressnumber) as dc_inbound_num
-  FROM buffaloex_delivery.expresstimerecord a 
-  LEFT JOIN buffaloex_delivery.express b
-  ON a.expressid = b.id
-  WHERE b.clientid not in ('2272458790721303','2815762535679143')
-    And if(a.inboundtime>0, a.inboundtime, a.cantransittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
-  GROUP BY a.hubid,
-           from_unixtime(if(a.inboundtime>0, a.inboundtime, a.cantransittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d'),
-           from_unixtime(if(a.inboundtime>0, a.inboundtime, a.cantransittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00')
-)a 
-ON a.hubid = c.id AND d.date = a.date AND d.date_time >= a.date_time
-GROUP BY c.id,d.date,d.date_time
+  SELECT d.date,
+         d.date_time,
+         c.name as dc, -- 分仓
+         SUM(if(a.dc_inbound_num is null,0,a.dc_inbound_num)) as dc_inbound_num, -- 分仓入库数量
+         SUM(if(a.dc_inountbound_num is null,0,a.dc_inountbound_num)) as dc_inountbound_num, -- 分仓入库后出库数量
+         SUM(if(a.buffalo_inountbound_num is null,0,a.buffalo_inountbound_num)) as buffalo_inountbound_num, -- 分仓入库后出库数量
+         SUM(if(a.3pl_inountbound_num is null,0,a.3pl_inountbound_num)) as 3pl_inountbound_num, -- 分仓入库后出库数量
+         SUM(if(a.transit_inountbound_num is null,0,a.transit_inountbound_num)) as transit_inountbound_num, -- 分仓入库后出库数量
+         SUM(if(a.dc_inunountbound_num is null,0,a.dc_inunountbound_num)) as dc_inunountbound_num, -- 分仓入库后未出库数量
+         SUM(if(a.buffalo_inunountbound_num is null,0,a.buffalo_inunountbound_num)) as buffalo_inunountbound_num, -- 分仓入库后未出库数量
+         SUM(if(a.3pl_inunountbound_num is null,0,a.3pl_inunountbound_num)) as 3pl_inunountbound_num, -- 分仓入库后未出库数量
+         SUM(if(a.transit_inunountbound_num is null,0,a.transit_inunountbound_num)) as transit_inunountbound_num -- 分仓入库后未出库数量
+  FROM dayhour d
+  JOIN buffaloex_delivery.storehouse c 
+  LEFT JOIN 
+  (
+    SELECT from_unixtime(if(a.inboundtime>0, a.inboundtime, a.cantransittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d') as date,
+           from_unixtime(if(a.inboundtime>0, a.inboundtime, a.cantransittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00') as date_time,
+           a.hubid,
+           count(distinct expressnumber) as dc_inbound_num,
+           sum(if(if(a.outboundtime > 0,a.outboundtime,a.transittime)>0,1,0)) as dc_inountbound_num,
+           sum(if(((a.outboundtime > 0 AND a.transittime = 0) OR (a.outboundtime >= a.transittime AND a.outboundtime > 0)) AND b.expresscompanyid = 3,1,0)) as buffalo_inountbound_num,
+           sum(if(((a.outboundtime > 0 AND a.transittime = 0) OR (a.outboundtime >= a.transittime AND a.outboundtime > 0)) AND b.expresscompanyid != 3,1,0)) as 3pl_inountbound_num,
+           sum(if((a.outboundtime = 0 AND a.transittime > 0) OR (a.transittime > a.outboundtime AND a.transittime > 0),1,0)) as transit_inountbound_num,
+           count(distinct expressnumber) -  sum(if(if(a.outboundtime > 0,a.outboundtime,a.transittime)>0,1,0)) as dc_inunountbound_num,
+           sum(if(a.outboundtime = 0 AND a.transittime = 0 AND b.nextsiteid = 0 AND b.expresscompanyid = 3,1,0)) as buffalo_inunountbound_num,
+           sum(if(a.outboundtime = 0 AND a.transittime = 0 AND b.nextsiteid = 0 AND b.expresscompanyid != 3,1,0)) as 3pl_inunountbound_num,
+           sum(if(a.outboundtime = 0 AND a.transittime = 0 AND b.nextsiteid > 0,1,0)) as transit_inunountbound_num
+    FROM buffaloex_delivery.expresstimerecord a 
+    LEFT JOIN buffaloex_delivery.express b
+    ON a.expressid = b.id
+    WHERE b.clientid not in ('2272458790721303','2815762535679143')
+      And if(a.inboundtime>0, a.inboundtime, a.cantransittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+    GROUP BY a.hubid,
+             from_unixtime(if(a.inboundtime>0, a.inboundtime, a.cantransittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d'),
+             from_unixtime(if(a.inboundtime>0, a.inboundtime, a.cantransittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00')
+  )a 
+  ON a.hubid = c.id AND d.date = a.date AND d.date_time >= a.date_time
+  GROUP BY c.id,d.date,d.date_time
 )t1
 LEFT JOIN
 (
-SELECT d.date,
-       d.date_time,
-       c.name as dc, -- 分仓
-       SUM(if(b.dc_outbound_num is null,0,b.dc_outbound_num)) as dc_outbound_num -- 分仓出库数量
-FROM dayhour d
-JOIN buffaloex_delivery.storehouse c 
-LEFT JOIN
-(
-  SELECT from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d') as date,
-         from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00') as date_time,
-         a.hubid,
-         count(distinct b.expressnumber) as dc_outbound_num
-  FROM buffaloex_delivery.expresstimerecord a 
-  LEFT JOIN buffaloex_delivery.express b
-  ON a.expressid = b.id
-  WHERE b.clientid not in ('2272458790721303','2815762535679143')
-    And if(a.outboundtime > 0,a.outboundtime,a.transittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
-  GROUP BY a.hubid,
-           from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d'),
-           from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00')
-)b
-ON b.hubid = c.id AND d.date = b.date AND d.date_time >= b.date_time
-GROUP BY c.id,d.date,d.date_time
+  SELECT d.date,
+         d.date_time,
+         c.name as dc, -- 分仓
+         SUM(if(b.dc_outbound_num is null,0,b.dc_outbound_num)) as dc_outbound_num, -- 分仓出库数量
+         SUM(if(b.buffalo_num is null,0,b.buffalo_num)) as jhb_buffalo_num, -- 约堡buffalo出库数量
+         SUM(if(b.3pl_num is null,0,b.3pl_num)) as jhb_3pl_num, -- 约堡3pl出库数量
+         SUM(if(b.transit_num is null,0,b.transit_num)) as jhb_transit_num -- 约堡转运出库数量
+  FROM dayhour d
+  JOIN buffaloex_delivery.storehouse c 
+  LEFT JOIN
+  (
+    SELECT from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d') as date,
+           from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00') as date_time,
+           a.hubid,
+           count(b.expressnumber) as dc_outbound_num,
+           sum(if(((a.outboundtime > 0 AND a.transittime = 0) OR (a.outboundtime >= a.transittime AND a.outboundtime > 0)) AND b.expresscompanyid = 3,1,0)) as buffalo_num,
+           sum(if(((a.outboundtime > 0 AND a.transittime = 0) OR (a.outboundtime >= a.transittime AND a.outboundtime > 0)) AND b.expresscompanyid != 3,1,0)) as 3pl_num,
+           sum(if((a.outboundtime = 0 AND a.transittime > 0) OR (a.transittime > a.outboundtime AND a.transittime > 0),1,0)) as transit_num
+    FROM buffaloex_delivery.expresstimerecord a 
+    LEFT JOIN buffaloex_delivery.express b
+    ON a.expressid = b.id
+    WHERE b.clientid not in ('2272458790721303','2815762535679143')
+      And if(a.outboundtime > 0,a.outboundtime,a.transittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+    GROUP BY a.hubid,
+             from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d'),
+             from_unixtime(if(a.outboundtime > 0,a.outboundtime,a.transittime) / 1000 - 6 * 60 * 60,'%Y-%m-%d %H:00:00')
+  )b
+  ON b.hubid = c.id AND d.date = b.date AND d.date_time >= b.date_time
+  GROUP BY c.id,d.date,d.date_time
 )t2
 ON t1.dc = t2.dc AND t1.date = t2.date AND t1.date_time = t2.date_time
 LEFT JOIN
 (
-SELECT d.date,
-       d.date_time,
-       c.name as dc, -- 分仓
-       count(distinct e.expressnumber) as dc_unoutbound_num -- 分仓未出库数量
-FROM dayhour d
-JOIN buffaloex_delivery.storehouse c 
-LEFT JOIN 
-(
-  SELECT from_unixtime(a.inboundtime / 1000,'%Y-%m-%d') as date,
-         from_unixtime(a.inboundtime / 1000,'%Y-%m-%d %H:00:00') as date_time,
-         a.hubid,
-         e.expressnumber
-  FROM buffaloex_delivery.expresstimerecord a
-  LEFT JOIN buffaloex_delivery.express e
-  ON a.expressid = e.id
-  WHERE e.sendstatus < 80 AND a.inboundtime > 0 AND a.outboundtime = 0 AND a.transittime = 0 AND e.finishtime = 0 AND e.sendstatus = 30 AND a.hubid = e.hubid
-        AND e.discardssign = 0 AND e.ordertype not in (70,90) AND e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') AND e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia  holding状态 异常件
-        AND a.inboundtime >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
-) e
-ON e.hubid = c.id AND d.date = e.date AND d.date_time >= e.date_time
-LEFT JOIN 
-(
-  SELECT expressnumber
-  FROM ads.ads_exception_total_detail_dd
-  GROUP BY expressnumber
-)et
-ON e.expressnumber = et.expressnumber and et.expressnumber is null
-GROUP BY d.date,d.date_time,c.name
+  SELECT d.date,
+         d.date_time,
+         c.name as dc, -- 分仓
+         count(distinct e.expressnumber) as dc_unoutbound_num -- 分仓未出库数量
+  FROM dayhour d
+  JOIN buffaloex_delivery.storehouse c 
+  LEFT JOIN 
+  (
+    SELECT from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+           from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+           a.hubid,
+           e.expressnumber
+    FROM buffaloex_delivery.expresstimerecord a
+    LEFT JOIN buffaloex_delivery.express e
+    ON a.expressid = e.id
+    WHERE e.sendstatus < 80 
+     AND if(a.inboundtime > 0,a.inboundtime,a.cantransittime) > 0 
+     AND if(a.outboundtime > 0,a.outboundtime,a.transittime) = 0 
+     AND e.finishtime = 0 
+     AND e.sendstatus = 30 
+     AND a.hubid = e.hubid
+     AND if(a.inboundtime > 0,a.inboundtime,a.cantransittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+  
+    UNION ALL
+  
+    SELECT from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+           from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+           a.hubid,
+           e.expressnumber
+    FROM buffaloex_delivery.expresstimerecord a
+    LEFT JOIN buffaloex_delivery.express e
+    ON a.expressid = e.id
+    JOIN buffaloex_delivery.expressreturngoods g
+    ON g.expressid = e.id AND e.hubid = g.hubid
+    WHERE e.sendstatus < 80 
+     AND if(a.inboundtime > 0,a.inboundtime,a.cantransittime) > 0 
+     AND if(a.outboundtime > 0,a.outboundtime,a.transittime) > 0 
+     AND e.finishtime = 0 -- AND e.sendstatus = 30 
+     AND a.hubid = e.hubid
+     AND if(a.inboundtime > 0,a.inboundtime,a.cantransittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+  ) e
+  ON e.hubid = c.id AND d.date >= e.date AND d.date_time >= e.date_time
+  LEFT JOIN 
+  (
+    SELECT expressnumber
+    FROM ads.ads_exception_total_detail_dd
+    GROUP BY expressnumber
+  )et
+  ON e.expressnumber = et.expressnumber and et.expressnumber is null
+  GROUP BY d.date,d.date_time,c.name
 )t3
 ON t1.dc = t3.dc AND t1.date = t3.date AND t1.date_time = t3.date_time
+LEFT JOIN
+(
+  SELECT d.date,
+         d.date_time,
+         c.name as dc, -- 分仓
+         sum(if(e.type = 'bag transit',1,0)) as bag_transit_picklist_num,
+         sum(if(e.type = 'leavesite',1,0)) as leavesite_picklist_num,
+         sum(if(e.type = 'dispatch pick',1,0)) as dispatch_pick_picklist_num,
+         count(e.expressnumber) as dc_picklist_num -- picklist数量
+  FROM dayhour d
+  JOIN buffaloex_delivery.storehouse c 
+  LEFT JOIN 
+  (
+    -- bag transit
+    SELECT from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+           from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+           e.hubid,
+           e.expressnumber,
+           'bag transit' as type
+    FROM buffaloex_delivery.express e
+    JOIN
+    (
+      SELECT r.expressid
+      FROM buffaloex_delivery.hubdashboardreviewproceduredeatil r
+      GROUP BY r.expressid
+    )r
+    ON e.id = r.expressid
+    JOIN buffaloex_delivery.expressextend ee
+    ON e.id = ee.expressid
+    JOIN buffaloex_delivery.expresstimerecord a
+    ON a.expressid = e.id AND a.hubid = e.hubid
+    WHERE if(a.inboundtime > 0,a.inboundtime,a.cantransittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+      AND ee.currentpicklistbegintime > 0
+      AND e.sendstatus = 30 AND e.nextsiteid > 0
+
+    UNION ALL
+    -- leavesite
+    SELECT from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+           from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+           e.hubid,
+           e.expressnumber,
+           'leavesite' as type
+    FROM buffaloex_delivery.express e
+    JOIN 
+    (
+      SELECT r.expressid
+      FROM buffaloex_delivery.hubdashboardreviewproceduredeatil r
+      GROUP BY r.expressid
+    )r
+    ON e.id = r.expressid
+    JOIN buffaloex_delivery.expressextend ee
+    ON e.id = ee.expressid
+    JOIN buffaloex_delivery.expresstimerecord a
+    ON a.expressid = e.id AND a.hubid = e.hubid
+    WHERE if(a.inboundtime > 0,a.inboundtime,a.cantransittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+      AND ee.currentpicklistbegintime > 0
+      AND e.sendstatus = 30 AND e.expresscompanyid != 3 AND e.nextsiteid = 0
+  
+    UNION ALL
+    -- dispatch pick
+    SELECT from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+           from_unixtime(if(a.inboundtime > 0,a.inboundtime,a.cantransittime) / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+           e.hubid,
+           e.expressnumber,
+           'dispatch pick' as type
+    FROM buffaloex_delivery.express e
+    JOIN 
+    (
+      SELECT r.expressid
+      FROM buffaloex_delivery.hubdashboardreviewproceduredeatil r
+      GROUP BY r.expressid
+    )r
+    ON e.id = r.expressid
+    JOIN buffaloex_delivery.expressextend ee
+    ON e.id = ee.expressid
+    JOIN buffaloex_delivery.expresstimerecord a
+    ON a.expressid = e.id AND a.hubid = e.hubid
+    WHERE if(a.inboundtime > 0,a.inboundtime,a.cantransittime) >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+      AND ee.currentpicklistbegintime > 0
+      AND e.sendstatus = 30 AND e.expresscompanyid = 3 AND e.nextsiteid = 0 AND courierid > 0
+  ) e
+  ON e.hubid = c.id AND d.date >= e.date AND d.date_time >= e.date_time
+  LEFT JOIN 
+  (
+    SELECT expressnumber
+    FROM ads.ads_exception_total_detail_dd
+    GROUP BY expressnumber
+  )et
+  ON e.expressnumber = et.expressnumber and et.expressnumber is null
+  GROUP BY d.date,d.date_time,c.name
+)t4
+ON t1.dc = t4.dc AND t1.date = t4.date AND t1.date_time = t4.date_time
+LEFT JOIN
+(
+  SELECT d.date,
+         d.date_time,
+         c.name as dc,
+         sum(if(dd.exception_type = 'Holding List',exception_num,0)) as holding_list_exception_num,
+         sum(if(dd.exception_type = 'Unassign',exception_num,0)) as unassign_exception_num,
+         sum(if(dd.exception_type = 'Commit Error',exception_num,0)) as commit_error_exception_num,
+         sum(if(dd.exception_type IN ('Doing','Check','Lock Detail'),exception_num,0)) as delivery_arrangement_exception_num,
+         sum(if(dd.exception_type = 'Lost',exception_num,0)) as lost_exception_num
+  FROM dayhour d
+  JOIN buffaloex_delivery.storehouse c 
+  LEFT JOIN 
+  (
+    SELECT e.hubid,
+           'Holding List' as exception_type,
+           count(distinct dd.expressnumber) as exception_num,
+           dd.exception_date
+    FROM ads.ads_exception_total_detail_dd dd
+    LEFT JOIN buffaloex_delivery.express e
+    ON dd.expressnumber = e.expressnumber
+    WHERE dd.exception_type = 'Holding list' and e.sendstatus = 30
+    GROUP BY e.hubid,dd.exception_date
+
+    UNION ALL
+
+    SELECT a.hubid,
+           'Unassign' as exception_type,
+           count(distinct a.id) as exception_num,
+           from_unixtime(a.createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date
+    FROM buffaloex_delivery.assign a 
+    LEFT JOIN  buffaloex_delivery.storehouse s 
+    ON a.hubid = s.id
+    WHERE (a.delaytime <=1724450400000 or a.ordertype = 5 ) 
+    -- AND (bookingdeliverytime <= ?) 
+    AND (display = 0) 
+    -- AND (hubid = ?) 
+    AND (a.`status` = 0)
+    GROUP BY a.hubid,from_unixtime(a.createtime / 1000 - 6 * 3600,'%Y-%m-%d')
+
+    UNION ALL
+
+    SELECT e.hubid,
+           'Commit Error' as exception_type,
+           count(distinct dd.expressnumber) as exception_num,
+           dd.exception_date
+    FROM ads.ads_exception_total_detail_dd dd
+    LEFT JOIN buffaloex_delivery.express e
+    ON dd.expressnumber = e.expressnumber
+    WHERE exception_type in ('Commit Error(Admin)','Commit Error(Delivery)')
+    GROUP BY e.hubid,dd.exception_date
+  
+    UNION ALL
+
+    -- doing
+    SELECT e.hubid,
+           'Doing' as exception_type,
+           count(distinct e.id) as exception_num,
+           from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date
+    FROM buffaloex_delivery.express e
+    WHERE (selfpickflg = 0) AND (discardssign = 0) AND (errorstatus >= 10) AND (checkstatus = -1) AND (sendstatus = 30) -- AND (storehouseid = ?)
+      AND createtime >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+    GROUP BY e.hubid,from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d')
+  
+    UNION ALL
+    -- check
+    SELECT e.hubid,
+           'Check' as exception_type,
+           count(distinct e.id) as exception_num,
+           from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date
+    FROM buffaloex_delivery.express e
+    WHERE (selfpickflg = 0) AND (errorstatus = 2) AND (discardssign = 0) AND (checkstatus = -1) AND (sendstatus = 30) -- AND (storehouseid = ?) 
+      AND createtime >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+    GROUP BY e.hubid,from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d')
+    
+    UNION ALL
+    -- Lock Detail
+    SELECT e.hubid,
+           'Lock Detail' as exception_type,
+           count(distinct e.id) as exception_num,
+           from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date
+    FROM buffaloex_delivery.express e
+    WHERE (lockuserid > 0) AND (sendstatus < 70) AND createtime >= unix_timestamp(DATE_SUB(DATE(NOW()),INTERVAL 30 DAY)) * 1000
+    GROUP BY e.hubid,from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d')
+
+    UNION ALL
+
+    SELECT l.losthubid as hubid,
+           'Lost' as exception_type,
+           count(distinct l.id) as exception_num,
+           from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d') as exception_date
+    FROM buffaloex2.expresslostrecord l
+    WHERE type = 2 AND l.createtime >= unix_timestamp(DATE_SUB(CURDATE(),INTERVAL 30 DAY)) * 1000 
+    GROUP BY l.losthubid,from_unixtime(createtime / 1000 - 6 * 3600,'%Y-%m-%d')
+  )dd
+  ON c.id = dd.hubid AND d.date >= dd.exception_date
+  GROUP BY c.id,d.date,d.date_time
+)t5
+ON t1.dc = t5.dc AND t1.date = t5.date AND t1.date_time = t5.date_time
