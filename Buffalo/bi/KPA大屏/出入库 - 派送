@@ -11,7 +11,7 @@ WITH dayhour AS
   )t
   JOIN
   (
-	SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
+    SELECT '00:00:00' AS i UNION SELECT '01:00:00' UNION SELECT '02:00:00' UNION SELECT '03:00:00'
     UNION SELECT '04:00:00' UNION SELECT '05:00:00' UNION SELECT '06:00:00' UNION SELECT '07:00:00'
     UNION SELECT '08:00:00' UNION SELECT '09:00:00' UNION SELECT '10:00:00' UNION SELECT '11:00:00' 
     UNION SELECT '12:00:00' UNION SELECT '13:00:00' UNION SELECT '14:00:00' UNION SELECT '15:00:00'
@@ -97,7 +97,8 @@ SELECT d.date,
        d.date_time,
        a.hubid,
        if(est_inbound is null,0,est_inbound) as est_inbound_num, -- 预计入库数
-       if(today_inbound is null,0,today_inbound) as act_inbound_num, -- 实际入库数
+       if(today_inbound is null,0,today_inbound) as today_inbound_num,
+       if(today_inbound is null,0,today_inbound) + if(excessive_inbound is null,0,excessive_inbound) + if(delaying_inbound is null,0,delaying_inbound) as act_inbound_num, -- 实际入库数
        if(wait_to_dispatch_pick_orders is null,0,wait_to_dispatch_pick_orders) as buffalo_est_outbound_num, -- buffalo预计出库数
        if(pick_confirm is null,0,pick_confirm) as buffalo_act_outbound_num, -- buffalo实际出库数
        if(est_leavesite_fastway is null,0,est_leavesite_fastway) + if(est_leavesite_skynet is null,0,est_leavesite_skynet) + if(est_leavesite_itt is null,0,est_leavesite_itt) + if(est_leavesite_paxi is null,0,est_leavesite_paxi) + if(est_leavesite_dpdlaser is null,0,est_leavesite_dpdlaser) as 3pl_est_outbound_num, -- 3pl预计出库数
@@ -107,7 +108,8 @@ SELECT d.date,
 -- 尾程派送
 -- 出库派送数-buffalo派送数-same day签收
        if(signed_rate_24_Hours is null,0,signed_rate_24_Hours) as buffalo_sameday_signed_num, -- buffalo24小时same day签收
-       if(signed_rate_denominator is null,0,signed_rate_denominator) as signed_rate_denominator_num -- 签收分母
+       if(signed_rate_denominator is null,0,signed_rate_denominator) as signed_rate_denominator_num, -- 签收分母
+       DATE_SUB(NOW(), INTERVAL 6 HOUR) as createtime
 FROM dayhour d
 LEFT JOIN t1 a
 ON d.date = a.createtime
