@@ -29,8 +29,9 @@ SELECT d.date,
        sum(if(air_arrrive_clearanced_num is null,0,air_arrrive_clearanced_num)) as air_arrrive_clearanced_num, -- 已清关运单
        sum(if(air_arrrive_released_num is null,0,air_arrrive_released_num)) as air_arrrive_released_num, -- 已释放运单
        sum(if(air_arrrive_detain_num is null,0,air_arrrive_detain_num)) as air_arrrive_detain_num, -- 已关停运单
-       sum(if(air_arrrive_order_num is null,0,air_arrrive_order_num)) as air_arrrive_order_num -- 实际运抵运单
+       sum(if(air_arrrive_order_num is null,0,air_arrrive_order_num)) as air_arrrive_order_num, -- 实际运抵运单
        -- sum(blnumber_num) as blnumber_num -- 实际运抵提单
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
 FROM dayhour d
 LEFT JOIN
 (
