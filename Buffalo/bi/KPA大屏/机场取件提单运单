@@ -30,54 +30,13 @@ SELECT d.date, -- 日期
 FROM dayhour d
 LEFT JOIN
 (
-  -- 不分批
   SELECT from_unixtime(f.collecttime / 1000,'%Y-%m-%d') as date,
          from_unixtime(f.collecttime / 1000,'%Y-%m-%d %H:00:00') as date_time,
          if(sum(b.totalnumber) is null,0,sum(b.totalnumber)) as air_collect_order_num, -- 机场取件运单
          count(distinct f.blnumber) as air_collect_blnumber_num -- 机场取件提单
   FROM buffaloex2.flightdetail f
   JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
-  JOIN 
-  (
-    SELECT t1.blnumber,
-           if(count(t1.blnumber) > 1,1,0) as is_batch
-    FROM buffaloex2.flightdetail t1
-    JOIN buffaloex2.blnumber t2 
-    ON t1.blnumber =t2.blnumber
-    GROUP BY t1.blnumber
-  )t2
-  ON f.blnumber = t2.blnumber
-  WHERE t2.is_batch = 0
-  AND ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
-  AND if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal) >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
-  AND f.collecttime >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
-  AND from_unixtime(f.collecttime / 1000,'%Y-%m-%d') = from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal) / 1000,'%Y-%m-%d')
-  GROUP BY from_unixtime(f.collecttime / 1000,'%Y-%m-%d'),
-           from_unixtime(f.collecttime / 1000,'%Y-%m-%d %H:00:00')
-
-  UNION ALL
-  -- 分批
-  SELECT from_unixtime(f.collecttime / 1000,'%Y-%m-%d') as date,
-         from_unixtime(f.collecttime / 1000,'%Y-%m-%d %H:00:00') as date_time,
-         if(sum(cast((f.bags/b.totalboxnumber)*b.totalnumber as int)) is null,0,sum(cast((f.bags/b.totalboxnumber)*b.totalnumber as int))) as air_collect_order_num, -- 机场取件运单
-         count(distinct f.blnumber) as air_collect_blnumber_num -- 机场取件提单
-  FROM buffaloex2.flightdetail f
-  JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
-  JOIN 
-  (
-    SELECT t1.blnumber,
-           if(count(t1.blnumber) > 1,1,0) as is_batch
-    FROM buffaloex2.flightdetail t1
-    JOIN buffaloex2.blnumber t2 
-    ON t1.blnumber =t2.blnumber
-    GROUP BY t1.blnumber
-  )t2 
-  ON f.blnumber = t2.blnumber
-  WHERE t2.is_batch = 1
-  AND ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
-  AND if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal) >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
-  AND f.collecttime >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
-  AND from_unixtime(f.collecttime / 1000,'%Y-%m-%d') = from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal) / 1000,'%Y-%m-%d')
+  WHERE f.collecttime >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
   GROUP BY from_unixtime(f.collecttime / 1000,'%Y-%m-%d'),
            from_unixtime(f.collecttime / 1000,'%Y-%m-%d %H:00:00')
 )tmp
