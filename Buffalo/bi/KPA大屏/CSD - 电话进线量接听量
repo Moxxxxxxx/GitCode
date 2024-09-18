@@ -35,6 +35,7 @@ LEFT JOIN
          count(distinct calllogid) as call_in_qty
   FROM buffaloex_delivery.quickcepcalllog 
   WHERE DATE(DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')) >= DATE_SUB(DATE(DATE_SUB(NOW(),INTERVAL 6 HOUR)),INTERVAL 30 DAY)
+    AND DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00') < DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 6 HOUR),'%Y-%m-%d %H:00:00')
   GROUP BY DATE(DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')),DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')
 ) q
 ON d.date = q.date AND d.date_time >= q.date_time
@@ -54,6 +55,27 @@ LEFT JOIN
          sum(case when `status` = 'dealing' then 1 else 0 end) as pickup_qty
   FROM buffaloex_delivery.quickcepcalllog 
   WHERE DATE(DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')) >= DATE_SUB(DATE(DATE_SUB(NOW(),INTERVAL 6 HOUR)),INTERVAL 30 DAY)
+    AND DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00') < DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 6 HOUR),'%Y-%m-%d %H:00:00')
+  GROUP BY DATE(DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')),DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')
+) q
+ON d.date = q.date AND d.date_time >= q.date_time
+GROUP BY d.date,d.date_time
+
+UNION ALL
+
+SELECT d.date,
+       d.date_time,
+       'IVR' as type,
+       SUM(IF(q.IVR_qty is null,0,q.IVR_qty)) as qty
+FROM dayhour d
+LEFT JOIN 
+(
+  SELECT DATE(DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')) as date,
+         DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00') as date_time,
+         sum(case when `status` = 'leak' then 1 else 0 end) as IVR_qty
+  FROM buffaloex_delivery.quickcepcalllog
+  WHERE DATE(DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')) >= DATE_SUB(DATE(DATE_SUB(NOW(),INTERVAL 6 HOUR)),INTERVAL 30 DAY)
+    AND DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00') < DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 6 HOUR),'%Y-%m-%d %H:00:00')
   GROUP BY DATE(DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')),DATE_FORMAT(endtimesa,'%Y-%m-%d %H:00:00')
 ) q
 ON d.date = q.date AND d.date_time >= q.date_time
