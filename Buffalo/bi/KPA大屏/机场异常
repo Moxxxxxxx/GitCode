@@ -19,19 +19,69 @@ WITH dayhour AS
     UNION SELECT '20:00:00' UNION SELECT '21:00:00' UNION SELECT '22:00:00' UNION SELECT '23:00:00'
   )hours
   WHERE DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY) <= DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR))
-    AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+  AND STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s') <= DATE_SUB(NOW(), INTERVAL 6 HOUR)
   ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
+),
+t1 as 
+(
+  SELECT count(dd.expressnumber) as exception_num,e.arrive_date
+  FROM ads.ads_exception_total_detail_dd dd
+  JOIN 
+  (
+    SELECT from_unixtime(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal) / 1000,'%Y-%m-%m %H:00:00') as arrive_date,
+           e.expressnumber,
+           f.blnumber
+    FROM buffaloex2.expressaging e
+    LEFT JOIN buffaloex2.express ex 
+    ON e.expressid = ex.id
+    LEFT JOIN buffaloex2.flightdetail f
+     ON ex.blnumber =f.blnumber
+    WHERE ex.clientid not in ('2272458790721303','2815762535679143')
+      AND e.createtime >= DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 90 DAY)
+      AND ex.createtime >= DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 90 DAY)
+      AND e.zainboundtime > 0
+      AND ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
+  )e
+  ON dd.expressnumber = e.expressnumber
+  WHERE exception_type = 'Tax Unpaid' -- AND dd.exception_date >= DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)
+  GROUP BY e.arrive_date
 )
 
 SELECT d.date,
        d.date_time,
        'Airport' as exception_class,
-       'Tax Unpaid' as exception_type,
-       count(expressnumber) as exception_num
+       'July Arrive Tax Unpaid' as exception_type,
+       sum(ifnull(exception_num,0)) as exception_num,
+       DATE_SUB(NOW(), INTERVAL 6 HOUR) as createtime
 FROM dayhour d
-LEFT JOIN ads.ads_exception_total_detail_dd dd
-ON d.date >= dd.exception_date
-WHERE exception_type = 'Tax Unpaid' AND dd.exception_date >= DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)
+JOIN t1
+ON month(t1.arrive_date) = 7
+GROUP BY d.date,d.date_time
+
+UNION ALL
+
+SELECT d.date,
+       d.date_time,
+       'Airport' as exception_class,
+       'August Arrive Tax Unpaid' as exception_type,
+       sum(ifnull(exception_num,0)) as exception_num,
+       DATE_SUB(NOW(), INTERVAL 6 HOUR) as createtime
+FROM dayhour d
+JOIN t1
+ON month(t1.arrive_date) = 8
+GROUP BY d.date,d.date_time
+
+UNION ALL
+
+SELECT d.date,
+       d.date_time,
+       'Airport' as exception_class,
+       'September Arrive Tax Unpaid' as exception_type,
+       sum(ifnull(exception_num,0)) as exception_num,
+       DATE_SUB(NOW(), INTERVAL 6 HOUR) as createtime
+FROM dayhour d
+LEFT JOIN t1
+ON month(t1.arrive_date) = 9 AND d.date >= t1.arrive_date
 GROUP BY d.date,d.date_time
 
 UNION ALL
@@ -40,7 +90,8 @@ SELECT d.date,
        d.date_time,
        'Airport' as exception_class,
        'Holding list' as exception_type,
-       count(expressnumber) as exception_num
+       count(expressnumber) as exception_num,
+       DATE_SUB(NOW(), INTERVAL 6 HOUR) as createtime
 FROM dayhour d
 LEFT JOIN 
 (
@@ -61,7 +112,8 @@ SELECT d.date,
        d.date_time,
        'Airport' as exception_class,
        'Uncleared' as exception_type,
-       count(expressnumber) as exception_num
+       count(expressnumber) as exception_num,
+       DATE_SUB(NOW(), INTERVAL 6 HOUR) as createtime
 FROM dayhour d
 LEFT JOIN 
 (
@@ -83,7 +135,8 @@ SELECT d.date,
        d.date_time,
        'Airport' as exception_class,
        'Lost' as exception_type,
-       count(id) as exception_num
+       count(id) as exception_num,
+       DATE_SUB(NOW(), INTERVAL 6 HOUR) as createtime
 FROM dayhour d
 LEFT JOIN 
 (
