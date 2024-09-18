@@ -229,5 +229,7 @@ t1 as
   ON d.date >= exception_date
   GROUP BY d.date,d.date_time
 )
-select *,row_number() over(PARTITION BY date,date_time order by exception_num desc) as rn
+select *,
+       row_number() over(PARTITION BY date,date_time order by exception_num desc) as rn,
+       date_sub(now(), INTERVAL 6 HOUR) as createtime
 from t1
