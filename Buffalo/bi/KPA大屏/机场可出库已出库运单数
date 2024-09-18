@@ -23,51 +23,75 @@ WITH dayhour AS
   ORDER BY DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),STR_TO_DATE(CONCAT(DATE_ADD(DATE_SUB(CURDATE(),INTERVAL 30 DAY), INTERVAL (n-1) DAY),' ',i),'%Y-%m-%d %H:%i:%s')
 )
 
-SELECT d.date,
-       d.date_time,
-       count(distinct e.expressnumber) + count(distinct ea.expressnumber) as est_airoutbound_order_num,
-       count(distinct ea.expressnumber) as act_airoutbound_order_num
-FROM dayhour d
-LEFT JOIN
-( 
-  SELECT FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime) / 1000 - 6 * 3600,'%Y-%m-%d') as date,
-         FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime) / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
-         e.expressnumber
-  FROM buffaloex2.flightdetail f
-  JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
-  JOIN buffaloex2.express e ON e.blnumber = b.blnumber
-  JOIN buffaloex2.expressaging a ON e.id = a.expressid
-  WHERE e.status < 90 AND a.zainboundtime > 0 AND a.taxpaidtime > 0 AND a.clearancefinishtime > 0 AND a.zaoutboundtime = 0 AND a.airportoutboundtime = 0
-    AND e.discardssign = 0 AND e.ordertype not in (70,90) AND e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') AND e.status = 67 AND e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia  holding状态 异常件 只保留Scanned in at SA warehouse状态
-    AND FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime) / 1000 - 6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
-    AND ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
-    AND if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal) >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
-    AND FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime) / 1000 - 6 * 3600,'%Y-%m-%d') = FROM_UNIXTIME(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal) / 1000,'%Y-%m-%d')
-) e
-ON d.date = e.date AND d.date_time >= e.date_time
+SELECT t1.date,
+       t1.date_time,
+       est_airoutbound_order_num + act_airoutbound_order_num as est_airoutbound_order_num,
+       act_airoutbound_order_num
+FROM
+(
+  SELECT d.date,
+         d.date_time,
+         sum(ifnull(est_airoutbound_order_num,0)) as est_airoutbound_order_num
+  FROM dayhour d
+  LEFT JOIN
+  (
+    SELECT e.date,
+           e.date_time,
+           COUNT(distinct e.expressnumber) as est_airoutbound_order_num
+      FROM 
+      (
+        SELECT FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime) / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+               FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime) / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+               e.expressnumber,
+               e.blnumber
+        FROM buffaloex2.express e
+        JOIN buffaloex2.expressaging a 
+        ON e.id = a.expressid
+        WHERE e.status < 90 AND a.zainboundtime > 0 AND a.taxpaidtime > 0 AND a.clearancefinishtime > 0 AND a.zaoutboundtime = 0 AND a.airportoutboundtime = 0
+        AND e.discardssign = 0 AND e.ordertype not in (70,90) AND e.clientid not in ('1849077896498792','1762662823336731','2767274446131118') AND e.status = 67 AND e.holdcheck = 0 -- 剔除弃件 大货 海运 Jumia  holding状态 异常件 只保留Scanned in at SA warehouse状态
+        AND FROM_UNIXTIME(GREATEST(a.zainboundtime,a.taxpaidtime,a.clearancefinishtime) / 1000 - 6 * 60 * 60 ,'%Y-%m-%d') >= '2024-01-01'
+    ) e
+    LEFT JOIN 
+    (
+      SELECT expressnumber
+      FROM ads.ads_exception_total_detail_dd
+      GROUP BY expressnumber
+    )et
+    ON e.expressnumber = et.expressnumber 
+    WHERE et.expressnumber is null
+    GROUP BY e.date,e.date_time
+  )e
+  ON d.date = e.date AND d.date_time >= e.date_time
+  GROUP BY d.date,d.date_time
+)t1
 LEFT JOIN 
 (
-  SELECT expressnumber
-  FROM ads.ads_exception_total_detail_dd
-  GROUP BY expressnumber
-)et
-ON e.expressnumber = et.expressnumber AND et.expressnumber is null
-LEFT JOIN 
-(
-  SELECT FROM_UNIXTIME(ea.airportoutboundtime / 1000 - 6 * 3600,'%Y-%m-%d') as date,
-         FROM_UNIXTIME(ea.airportoutboundtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
-         ea.expressnumber
-  FROM buffaloex2.flightdetail f
-  JOIN buffaloex2.blnumber b ON f.blnumber = b.blnumber
-  JOIN buffaloex2.express ex ON ex.blnumber = b.blnumber
-  JOIN buffaloex2.expressaging ea ON ex.id = ea.expressid
-  WHERE ex.transportmode < 10 
-    AND ex.clientid not in ('2272458790721303','2815762535679143')
-    AND ((f.secondarrivaltime = 0 and f.firstarrivaltimereal > 0) or (f.secondarrivaltime > 0 and f.secondarrivaltimereal > 0)) -- 没有二程且一程实际抵达 或 有二程且二程实际抵达
-    AND if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal) >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
-    AND FROM_UNIXTIME(ea.airportoutboundtime / 1000 - 6 * 3600,'%Y-%m-%d') = FROM_UNIXTIME(if(f.secondarrivaltimereal > 0,f.secondarrivaltimereal,f.firstarrivaltimereal) / 1000,'%Y-%m-%d')
-    AND ea.airportoutboundtime >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
-) ea
-ON d.date = ea.date AND d.date_time >= ea.date_time
-GROUP BY d.date,d.date_time
-ORDER BY d.date,d.date_time
+  SELECT d.date,
+         d.date_time,
+         sum(ifnull(act_airoutbound_order_num,0)) as act_airoutbound_order_num
+  FROM dayhour d
+  LEFT JOIN
+  (
+    SELECT e.date,
+           e.date_time,
+           COUNT(distinct e.expressnumber) as act_airoutbound_order_num
+    FROM 
+    (
+      SELECT FROM_UNIXTIME(ea.airportoutboundtime / 1000 - 6 * 3600,'%Y-%m-%d') as date,
+             FROM_UNIXTIME(ea.airportoutboundtime / 1000 - 6 * 3600,'%Y-%m-%d %H:00:00') as date_time,
+             ea.expressnumber,
+             ex.blnumber
+      FROM buffaloex2.express ex
+      JOIN buffaloex2.expressaging ea 
+      ON ex.id = ea.expressid
+      WHERE ex.transportmode < 10 
+        AND ex.clientid not in ('2272458790721303','2815762535679143')
+        AND ea.airportoutboundtime >= unix_timestamp(DATE_SUB(DATE(DATE_SUB(NOW(), INTERVAL 6 HOUR)),INTERVAL 30 DAY)) * 1000
+    )e 
+    GROUP BY e.date,e.date_time
+  ) ea
+  ON d.date = ea.date AND d.date_time >= ea.date_time
+  GROUP BY d.date,d.date_time
+)t2
+ON t1.date = t2.date AND t1.date_time = t2.date_time
+ORDER BY t1.date,t1.date_time
